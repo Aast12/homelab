@@ -16,18 +16,17 @@ pages:
             title: Services
             sites:
               - title: Home Assistant 
-                url: https://homeassistant.alamst.me/
-                check-url: http://homeassistant/
+                url: https://ha.lab.alamst.me/
                 allow-insecure: true
                 icon: si:homeassistant
               - title: traefik 
-                url: https://traefik.alamst.me/
-                check-url: http://traefik:8123/
+                url: https://traefik.lab.alamst.me/
                 allow-insecure: true
+                alt-status-codes:
+                  - 401
                 icon: si:traefikproxy
               - title: miniflux 
-                url: https://miniflux.alamst.me/
-                check-url: http://miniflux/
+                url: https://miniflux.lab.alamst.me/
                 allow-insecure: true
                 icon: si:rss
 
