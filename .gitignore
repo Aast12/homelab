@@ -1,0 +1,21 @@
+# Determine what is "Secret"
+secrets.yaml
+
+.env
+
+# Ignore Runtime Data & Logs
+*.log
+*.log.*
+home-assistant_v2.db
+home-assistant_v2.db-wal
+home-assistant_v2.db-shm
+
+# Ignore Cache & Temps
+/deps
+/tts
+/backups
+/db_storage
+__pycache__
+
+.storage
+.cloud

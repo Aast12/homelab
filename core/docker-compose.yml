@@ -1,0 +1,147 @@
+services:
+  blocky:
+    image: spx01/blocky
+    container_name: blocky
+    restart: unless-stopped
+    hostname: blocky-hostname
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "4000:4000/tcp"
+    environment:
+      - TZ=America/Monterrey 
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./blocky/config.yml:/app/config.yml:ro 
+  traefik:
+    image: "traefik:v3.4"
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    extra_hosts:
+      - "host.docker.internal:host-gateway" 
+    networks: 
+      - proxy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    environment:
+      # create this token at dash.cloudflare.com/profile/api-tokens
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN} 
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/dynamic:/dynamic:ro 
+      - /data/traefik/letsencrypt:/letsencrypt
+    command:
+      # EntryPoints
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--entrypoints.websecure.http.tls=true"
+      # EntryPoints
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.websecure.address=:443"
+      
+      # Providers
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=proxy"
+      - "--providers.file.directory=/dynamic" # Tells Traefik to read our external config
+      - "--providers.file.watch=true"
+
+      # API & Dashboard
+      - "--api.dashboard=true"
+
+      # Observability 
+      - "--log.level=ERROR"
+      - "--accesslog=true"
+
+      # === CLOUDFLARE DNS CHALLENGE SETUP ===
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      # Delay is sometimes needed for DNS propagation, 45s is safe
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.delaybeforecheck=45" 
+      - "--certificatesresolvers.cloudflare.acme.email=alamst@proton.me"
+      - "--certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json"
+
+    labels:
+      - "traefik.enable=true"
+      # Dashboard Router
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.lab.alamst.me`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.tls.certresolver=cloudflare" # Must match resolver name above
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
+      # Middleware
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=admin:$$apr1$$N0gCuYjg$$F.GHIFE8sJaKJJL5aK.KA."
+  glance:
+    container_name: glance
+    image: glanceapp/glance
+    restart: unless-stopped
+    volumes:
+      - ./glance:/app/config
+    networks: 
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glance.rule=Host(`lab.alamst.me`)"
+      - "traefik.http.routers.glance.entrypoints=websecure"
+      - "traefik.http.routers.glance.tls=true"
+      - "traefik.http.routers.glance.tls.certresolver=cloudflare"
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - ./homeassistant:/config
+      - /data/homeassistant:/config/db_storage
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    environment:
+      TZ: America/Monterrey
+  miniflux:
+    image: miniflux/miniflux:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: 
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.miniflux.rule=Host(`miniflux.lab.alamst.me`)"
+      - "traefik.http.routers.miniflux.entrypoints=websecure"
+      - "traefik.http.routers.miniflux.tls=true"
+      - "traefik.http.routers.miniflux.tls.certresolver=cloudflare"
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/miniflux?sslmode=disable
+      - RUN_MIGRATIONS=1
+      - CREATE_ADMIN=1
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+  db:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=miniflux
+    networks: 
+      - proxy
+    volumes:
+      - miniflux-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "miniflux"]
+      interval: 10s
+      start_period: 30s
+
+volumes:
+  miniflux-db:
+
+networks:
+  proxy:
+    name: proxy

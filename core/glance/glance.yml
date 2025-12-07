@@ -1,0 +1,106 @@
+pages:
+  - name: Home
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            first-day-of-week: monday
+
+      - size: full
+        widgets:
+          - type: search
+            autofocus: true
+
+          - type: monitor
+            cache: 1m
+            title: Services
+            sites:
+              - title: Home Assistant 
+                url: https://homeassistant.alamst.me/
+                check-url: http://homeassistant/
+                allow-insecure: true
+                icon: si:homeassistant
+              - title: traefik 
+                url: https://traefik.alamst.me/
+                check-url: http://traefik:8123/
+                allow-insecure: true
+                icon: si:traefikproxy
+              - title: miniflux 
+                url: https://miniflux.alamst.me/
+                check-url: http://miniflux/
+                allow-insecure: true
+                icon: si:rss
+
+          - type: bookmarks
+            groups:
+              - title: General
+                links:
+                  - title: Gmail
+                    url: https://mail.google.com/mail/u/0/
+                  - title: Amazon
+                    url: https://www.amazon.com/
+                  - title: Github
+                    url: https://github.com/
+              - title: Entertainment
+                links:
+                  - title: YouTube
+                    url: https://www.youtube.com/
+                  - title: Prime Video
+                    url: https://www.primevideo.com/
+                  - title: Disney+
+                    url: https://www.disneyplus.com/
+              - title: Social
+                links:
+                  - title: Reddit
+                    url: https://www.reddit.com/
+                  - title: Twitter
+                    url: https://twitter.com/
+                  - title: Instagram
+                    url: https://www.instagram.com/l
+
+      - size: small 
+        widgets:
+          - type: weather
+            location: Monterrey, Mexico 
+            units: metric 
+            hour-format: 24h 
+            # hide-location: true
+
+          - type: markets
+            markets:
+              - symbol: SPY
+                name: S&P 500
+              - symbol: BTC-USD
+                name: Bitcoin
+              - symbol: NVDA
+                name: NVIDIA
+              - symbol: AAPL
+                name: Apple
+              - symbol: MSFT
+                name: Microsoft
+
+          - type: releases
+            cache: 1d
+            # Without authentication the Github API allows for up to 60 requests per hour. You can create a
+            # read-only token from your Github account settings and use it here to increase the limit.
+            # token: ...
+            repositories:
+              - glanceapp/glance
+              - go-gitea/gitea
+              - immich-app/immich
+              - syncthing/syncthing
+
+  # Add more pages here:
+  # - name: Your page name
+  #   columns:
+  #     - size: small
+  #       widgets:
+  #         # Add widgets here
+
+  #     - size: full
+  #       widgets:
+  #         # Add widgets here
+
+  #     - size: small
+  #       widgets:
+  #         # Add widgets here
