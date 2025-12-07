@@ -16,10 +16,7 @@ services:
     ports:
       - "8088:8088"
     volumes:
-      - wealthfolio-data:/data
-
-volumes:
-  wealthfolio-data:
+      - /data/wealthfolio:/data
 
 networks:
   proxy:

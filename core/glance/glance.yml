@@ -29,6 +29,10 @@ pages:
                 url: https://miniflux.lab.alamst.me/
                 allow-insecure: true
                 icon: si:rss
+              - title: Wealthfolio 
+                url: https://wealth.lab.alamst.me/
+                allow-insecure: true
+                icon: sh:wealthfolio
 
           - type: bookmarks
             groups:
