@@ -1,0 +1,26 @@
+services:
+  wealthfolio:
+    image: afadil/wealthfolio:latest
+    container_name: wealthfolio
+    environment:
+      WF_DB_PATH: ${WF_DB_PATH}
+      WF_SECRET_KEY: ${WF_SECRET_KEY}
+      WF_AUTH_PASSWORD_HASH: ${WF_AUTH_PASSWORD_HASH}
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wealthfolio.rule=Host(`wealth.lab.alamst.me`)"
+      - "traefik.http.routers.wealthfolio.entrypoints=websecure"
+      - "traefik.http.routers.wealthfolio.tls.certresolver=cloudflare"
+    ports:
+      - "8088:8088"
+    volumes:
+      - wealthfolio-data:/data
+
+volumes:
+  wealthfolio-data:
+
+networks:
+  proxy:
+    external: true
