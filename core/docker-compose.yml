@@ -91,7 +91,7 @@ services:
       - "traefik.http.routers.glance.tls.certresolver=cloudflare"
   homeassistant:
     container_name: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
+    image: "ghcr.io/home-assistant/home-assistant:latest"
     volumes:
       - ./homeassistant:/config
       - /data/homeassistant:/config/db_storage
