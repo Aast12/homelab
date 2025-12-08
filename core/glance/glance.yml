@@ -33,6 +33,10 @@ pages:
                 url: https://wealth.lab.alamst.me/
                 allow-insecure: true
                 icon: sh:wealthfolio
+              - title: Audiobookshelf
+                url: https://books.lab.alamst.me/
+                allow-insecure: true
+                icon: si:audiobookshelf
 
           - type: bookmarks
             groups:
