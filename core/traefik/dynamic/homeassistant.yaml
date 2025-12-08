@@ -7,9 +7,20 @@ http:
       service: homeassistant
       tls:
         certResolver: cloudflare 
+    audiobookshelf:
+      rule: "Host(`books.lab.alamst.me`)"
+      service: audiobookshelf
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
 
   services:
     homeassistant:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:8123"
+    audiobookshelf:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:13378"

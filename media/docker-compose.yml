@@ -4,10 +4,10 @@ services:
     ports:
       - 13378:80
     volumes:
-      - ./audiobookshelf/data/books:/books
-      - ./audiobookshelf/data/audiobooks:/audiobooks
-      - ./audiobookshelf/data/podcasts:/podcasts
-      - ./audiobookshelf/data/config:/config
-      - ./audiobookshelf/data/metadata:/metadata
+      - /data/audiobookshelf/books:/books
+      - /data/audiobookshelf/audiobooks:/audiobooks
+      - /data/audiobookshelf/podcasts:/podcasts
+      - /data/audiobookshelf/config:/config
+      - /data/audiobookshelf/metadata:/metadata
     environment:
       - TZ=America/Monterrey
