@@ -40,7 +40,7 @@ pages:
               - title: Upsnap
                 url: https://upsnap.lab.alamst.me/
                 allow-insecure: true
-                icon: si:monitor
+                icon: sh:upsnap
               - title: Jellyfin
                 url: https://jellyfin.lab.alamst.me/
                 allow-insecure: true
@@ -48,7 +48,7 @@ pages:
               - title: Jellyseerr
                 url: https://jellyseerr.lab.alamst.me/
                 allow-insecure: true
-                icon: si:monitor
+                icon: sh:jellyseerr
               - title: Sonarr
                 url: https://sonarr.lab.alamst.me/
                 allow-insecure: true
@@ -60,11 +60,11 @@ pages:
               - title: Lidarr
                 url: https://lidarr.lab.alamst.me/
                 allow-insecure: true
-                icon: si:lidarr
+                icon: sh:lidarr
               - title: Bazarr
                 url: https://bazarr.lab.alamst.me/
                 allow-insecure: true
-                icon: si:monitor
+                icon: sh:bazarr
 
 
           - type: bookmarks
