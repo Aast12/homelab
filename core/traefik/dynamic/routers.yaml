@@ -14,55 +14,55 @@ http:
         - websecure
       tls:
         certResolver: cloudflare
-      upsnap:
-        rule: "Host(`upsnap.lab.alamst.me`)"
-        service: upsnap 
-        entryPoints:
-          - websecure
-        tls:
-          certResolver: cloudflare
-      jellyfin:
-        rule: "Host(`jellyfin.lab.alamst.me`)"
-        entryPoints:
-          - websecure
-        service: jellyfin
-        tls:
-          certResolver: cloudflare
-      jellyseerr:
-        rule: "Host(`jellyseerr.lab.alamst.me`)"
-        entryPoints:
-          - websecure
-        service: jellyseerr
-        tls:
-          certResolver: cloudflare
-      sonarr:
-        rule: "Host(`sonarr.lab.alamst.me`)"
-        entryPoints:
-          - websecure
-        service: sonarr
-        tls:
-          certResolver: cloudflare
-      radarr:
-        rule: "Host(`radarr.lab.alamst.me`)"
-        entryPoints:
-          - websecure
-        service: radarr
-        tls:
-          certResolver: cloudflare
-      lidarr:
-        rule: "Host(`lidarr.lab.alamst.me`)"
-        entryPoints:
-          - websecure
-        service: lidarr
-        tls:
-          certResolver: cloudflare
-      bazarr:
-        rule: "Host(`bazarr.lab.alamst.me`)"
-        entryPoints:
-          - websecure
-        service: bazarr
-        tls:
-          certResolver: cloudflare
+    upsnap:
+      rule: "Host(`upsnap.lab.alamst.me`)"
+      service: upsnap 
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
+    jellyfin:
+      rule: "Host(`jellyfin.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: jellyfin
+      tls:
+        certResolver: cloudflare
+    jellyseerr:
+      rule: "Host(`jellyseerr.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: jellyseerr
+      tls:
+        certResolver: cloudflare
+    sonarr:
+      rule: "Host(`sonarr.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: sonarr
+      tls:
+        certResolver: cloudflare
+    radarr:
+      rule: "Host(`radarr.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: radarr
+      tls:
+        certResolver: cloudflare
+    lidarr:
+      rule: "Host(`lidarr.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: lidarr
+      tls:
+        certResolver: cloudflare
+    bazarr:
+      rule: "Host(`bazarr.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: bazarr
+      tls:
+        certResolver: cloudflare
   
   services:
     homeassistant:
