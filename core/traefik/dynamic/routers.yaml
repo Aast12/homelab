@@ -76,7 +76,7 @@ http:
     upsnap:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:"
+          - url: "http://host.docker.internal:8090"
     jellyfin:
       loadBalancer:
         servers:
