@@ -37,6 +37,35 @@ pages:
                 url: https://books.lab.alamst.me/
                 allow-insecure: true
                 icon: si:audiobookshelf
+              - title: Upsnap
+                url: https://upsnap.lab.alamst.me/
+                allow-insecure: true
+                icon: si:monitor
+              - title: Jellyfin
+                url: https://jellyfin.lab.alamst.me/
+                allow-insecure: true
+                icon: si:jellyfin
+              - title: Jellyseerr
+                url: https://jellyseerr.lab.alamst.me/
+                allow-insecure: true
+                icon: si:monitor
+              - title: Sonarr
+                url: https://sonarr.lab.alamst.me/
+                allow-insecure: true
+                icon: si:sonarr
+              - title: Radarr
+                url: https://radarr.lab.alamst.me/
+                allow-insecure: true
+                icon: si:radarr
+              - title: Lidarr
+                url: https://lidarr.lab.alamst.me/
+                allow-insecure: true
+                icon: si:lidarr
+              - title: Bazarr
+                url: https://bazarr.lab.alamst.me/
+                allow-insecure: true
+                icon: si:monitor
+
 
           - type: bookmarks
             groups:
