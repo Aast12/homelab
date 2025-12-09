@@ -6,6 +6,17 @@ pages:
           - type: calendar
             first-day-of-week: monday
 
+          - type: bookmarks
+            groups:
+              - title: General
+                links:
+                  - title: Proton Mail 
+                    url: https://mail.proton.me/u/2/inbox
+                  - title: Amazon
+                    url: https://www.amazon.com.mx/
+                  - title: Github
+                    url: https://github.com/
+
       - size: full
         widgets:
           - type: search
@@ -39,6 +50,41 @@ pages:
                 url: https://jellyseerr.lab.alamst.me/
                 allow-insecure: true
                 icon: sh:jellyseerr
+
+
+      - size: small 
+        widgets:
+          - type: weather
+            location: Monterrey, Mexico 
+            units: metric 
+            hour-format: 24h 
+
+          - type: markets
+            markets:
+              - symbol: SPY
+                name: S&P 500
+              - symbol: VT
+                name: Vanguard Total
+              - symbol: BTC-USD
+                name: Bitcoin
+              - symbol: NVDA
+                name: NVIDIA
+              - symbol: AAPL
+                name: Apple
+              - symbol: MSFT
+                name: Microsoft
+
+  - name: Admin
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            first-day-of-week: monday
+
+      - size: full
+        widgets:
+          - type: search
+            autofocus: true
 
           - type: monitor
             cache: 1m
@@ -81,60 +127,14 @@ pages:
                 icon: sh:prowlarr
 
 
-          - type: bookmarks
-            groups:
-              - title: General
-                links:
-                  - title: Proton Mail 
-                    url: https://mail.proton.me/u/2/inbox
-                  - title: Amazon
-                    url: https://www.amazon.com.mx/
-                  - title: Github
-                    url: https://github.com/
-
       - size: small 
         widgets:
-          - type: weather
-            location: Monterrey, Mexico 
-            units: metric 
-            hour-format: 24h 
-            # hide-location: true
-
-          - type: markets
-            markets:
-              - symbol: SPY
-                name: S&P 500
-              - symbol: BTC-USD
-                name: Bitcoin
-              - symbol: NVDA
-                name: NVIDIA
-              - symbol: AAPL
-                name: Apple
-              - symbol: MSFT
-                name: Microsoft
 
           - type: releases
             cache: 1d
-            # Without authentication the Github API allows for up to 60 requests per hour. You can create a
-            # read-only token from your Github account settings and use it here to increase the limit.
-            # token: ...
             repositories:
               - glanceapp/glance
-              - go-gitea/gitea
-              - immich-app/immich
+              - jellyfin/jellyfin
+              - home-assistant/core
               - syncthing/syncthing
 
-  # Add more pages here:
-  # - name: Your page name
-  #   columns:
-  #     - size: small
-  #       widgets:
-  #         # Add widgets here
-
-  #     - size: full
-  #       widgets:
-  #         # Add widgets here
-
-  #     - size: small
-  #       widgets:
-  #         # Add widgets here

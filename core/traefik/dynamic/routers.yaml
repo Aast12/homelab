@@ -70,6 +70,13 @@ http:
       service: prowlarr
       tls:
         certResolver: cloudflare
+    qbittorrent:
+      rule: "Host(`qb.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: qbittorrent
+      tls:
+        certResolver: cloudflare
   
   services:
     homeassistant:
@@ -112,3 +119,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.0.180:9696"
+    qbittorrent:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:8080"
