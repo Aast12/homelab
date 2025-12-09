@@ -14,24 +14,90 @@ http:
         - websecure
       tls:
         certResolver: cloudflare
-    upsnap:
-      rule: "Host(`upsnap.lab.alamst.me`)"
-      service: upsnap 
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: cloudflare
-
-  services:
-    homeassistant:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8123"
-    audiobookshelf:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.180:13378"
-    upsnap:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:5173"
+      upsnap:
+        rule: "Host(`upsnap.lab.alamst.me`)"
+        service: upsnap 
+        entryPoints:
+          - websecure
+        tls:
+          certResolver: cloudflare
+      jellyfin:
+        rule: "Host(`jellyfin.lab.alamst.me`)"
+        entryPoints:
+          - websecure
+        service: jellyfin
+        tls:
+          certResolver: cloudflare
+      jellyseerr:
+        rule: "Host(`jellyseerr.lab.alamst.me`)"
+        entryPoints:
+          - websecure
+        service: jellyseerr
+        tls:
+          certResolver: cloudflare
+      sonarr:
+        rule: "Host(`sonarr.lab.alamst.me`)"
+        entryPoints:
+          - websecure
+        service: sonarr
+        tls:
+          certResolver: cloudflare
+      radarr:
+        rule: "Host(`radarr.lab.alamst.me`)"
+        entryPoints:
+          - websecure
+        service: radarr
+        tls:
+          certResolver: cloudflare
+      lidarr:
+        rule: "Host(`lidarr.lab.alamst.me`)"
+        entryPoints:
+          - websecure
+        service: lidarr
+        tls:
+          certResolver: cloudflare
+      bazarr:
+        rule: "Host(`bazarr.lab.alamst.me`)"
+        entryPoints:
+          - websecure
+        service: bazarr
+        tls:
+          certResolver: cloudflare
+  
+    services:
+      homeassistant:
+        loadBalancer:
+          servers:
+            - url: "http://host.docker.internal:8123"
+      audiobookshelf:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:13378"
+      upsnap:
+        loadBalancer:
+          servers:
+            - url: "http://host.docker.internal:5173"
+      jellyfin:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:8096"
+      jellyseerr:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:5055"
+      sonarr:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:8989"
+      radarr:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:7878"
+      lidarr:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:8686"
+      bazarr:
+        loadBalancer:
+          servers:
+            - url: "http://192.168.0.180:6767"
