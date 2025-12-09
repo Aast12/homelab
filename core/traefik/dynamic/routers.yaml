@@ -63,6 +63,13 @@ http:
       service: bazarr
       tls:
         certResolver: cloudflare
+    prowlarr:
+      rule: "Host(`prowlarr.lab.alamst.me`)"
+      entryPoints:
+        - websecure
+      service: prowlarr
+      tls:
+        certResolver: cloudflare
   
   services:
     homeassistant:
@@ -101,3 +108,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.0.180:6767"
+    prowlarr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:9696"

@@ -13,18 +13,12 @@ pages:
 
           - type: monitor
             cache: 1m
-            title: Services
+            title: Apps
             sites:
               - title: Home Assistant 
                 url: https://ha.lab.alamst.me/
                 allow-insecure: true
                 icon: si:homeassistant
-              - title: traefik 
-                url: https://traefik.lab.alamst.me/
-                allow-insecure: true
-                alt-status-codes:
-                  - 401
-                icon: si:traefikproxy
               - title: miniflux 
                 url: https://miniflux.lab.alamst.me/
                 allow-insecure: true
@@ -37,10 +31,6 @@ pages:
                 url: https://books.lab.alamst.me/
                 allow-insecure: true
                 icon: si:audiobookshelf
-              - title: Upsnap
-                url: https://upsnap.lab.alamst.me/
-                allow-insecure: true
-                icon: sh:upsnap
               - title: Jellyfin
                 url: https://jellyfin.lab.alamst.me/
                 allow-insecure: true
@@ -49,6 +39,26 @@ pages:
                 url: https://jellyseerr.lab.alamst.me/
                 allow-insecure: true
                 icon: sh:jellyseerr
+
+          - type: monitor
+            cache: 1m
+            title: Admin
+            sites:
+              - title: traefik 
+                url: https://traefik.lab.alamst.me/
+                allow-insecure: true
+                alt-status-codes:
+                  - 401
+                icon: si:traefikproxy
+              - title: Upsnap
+                url: https://upsnap.lab.alamst.me/
+                allow-insecure: true
+                icon: sh:upsnap
+
+          - type: monitor
+            cache: 1m
+            title: Media
+            sites:
               - title: Sonarr
                 url: https://sonarr.lab.alamst.me/
                 allow-insecure: true
@@ -65,34 +75,22 @@ pages:
                 url: https://bazarr.lab.alamst.me/
                 allow-insecure: true
                 icon: sh:bazarr
+              - title: Prowlarr
+                url: https://prowlarr.lab.alamst.me/
+                allow-insecure: true
+                icon: sh:prowlarr
 
 
           - type: bookmarks
             groups:
               - title: General
                 links:
-                  - title: Gmail
-                    url: https://mail.google.com/mail/u/0/
+                  - title: Proton Mail 
+                    url: https://mail.proton.me/u/2/inbox
                   - title: Amazon
-                    url: https://www.amazon.com/
+                    url: https://www.amazon.com.mx/
                   - title: Github
                     url: https://github.com/
-              - title: Entertainment
-                links:
-                  - title: YouTube
-                    url: https://www.youtube.com/
-                  - title: Prime Video
-                    url: https://www.primevideo.com/
-                  - title: Disney+
-                    url: https://www.disneyplus.com/
-              - title: Social
-                links:
-                  - title: Reddit
-                    url: https://www.reddit.com/
-                  - title: Twitter
-                    url: https://twitter.com/
-                  - title: Instagram
-                    url: https://www.instagram.com/l
 
       - size: small 
         widgets:
