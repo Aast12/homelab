@@ -64,40 +64,40 @@ http:
         tls:
           certResolver: cloudflare
   
-    services:
-      homeassistant:
-        loadBalancer:
-          servers:
-            - url: "http://host.docker.internal:8123"
-      audiobookshelf:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:13378"
-      upsnap:
-        loadBalancer:
-          servers:
-            - url: "http://host.docker.internal:8090"
-      jellyfin:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:8096"
-      jellyseerr:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:5055"
-      sonarr:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:8989"
-      radarr:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:7878"
-      lidarr:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:8686"
-      bazarr:
-        loadBalancer:
-          servers:
-            - url: "http://192.168.0.180:6767"
+  services:
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8123"
+    audiobookshelf:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:13378"
+    upsnap:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:"
+    jellyfin:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:8096"
+    jellyseerr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:5055"
+    sonarr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:8989"
+    radarr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:7878"
+    lidarr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:8686"
+    bazarr:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.0.180:6767"
