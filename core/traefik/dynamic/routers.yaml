@@ -14,6 +14,13 @@ http:
         - websecure
       tls:
         certResolver: cloudflare
+    upsnap:
+      rule: "Host(`upsnap.lab.alamst.me`)"
+      service: upsnap 
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: cloudflare
 
   services:
     homeassistant:
@@ -24,3 +31,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.0.180:13378"
+    upsnap:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5173"

@@ -105,6 +105,13 @@ services:
       - NET_RAW
     environment:
       TZ: America/Monterrey
+  upsnap:
+    container_name: upsnap
+    image: ghcr.io/seriousm4x/upsnap:5
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - /data/upsnap:/app/pb_data
 
 networks:
   proxy:
