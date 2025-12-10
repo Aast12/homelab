@@ -53,8 +53,6 @@ services:
 
 volumes:
   miniflux-db:
-    external: true
-    name: core_miniflux-db
 
 networks:
   proxy:
