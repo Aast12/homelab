@@ -24,9 +24,8 @@ services:
     volumes:
       - ./config:/config
       - /data/media:/data
-#    TODO: enable igpu 
-#    devices:
-#      - /dev/dri:/dev/dri #Use for Intel QuickSync
+    devices:
+      - /dev/dri:/dev/dri #Use for Intel QuickSync
     ports:
       - 8096:8096
       - 7359:7359/udp #Service Discovery
