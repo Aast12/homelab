@@ -86,7 +86,7 @@ http:
     audiobookshelf:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:13378"
+          - url: "http://192.168.0.170:13378"
     upsnap:
       loadBalancer:
         servers:
@@ -94,32 +94,32 @@ http:
     jellyfin:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:8096"
+          - url: "http://192.168.0.170:8096"
     jellyseerr:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:5055"
+          - url: "http://192.168.0.170:5055"
     sonarr:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:8989"
+          - url: "http://192.168.0.170:8989"
     radarr:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:7878"
+          - url: "http://192.168.0.170:7878"
     lidarr:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:8686"
+          - url: "http://192.168.0.170:8686"
     bazarr:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:6767"
+          - url: "http://192.168.0.170:6767"
     prowlarr:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:9696"
+          - url: "http://192.168.0.170:9696"
     qbittorrent:
       loadBalancer:
         servers:
-          - url: "http://192.168.0.180:8080"
+          - url: "http://192.168.0.170:8080"
