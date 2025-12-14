@@ -19,3 +19,15 @@ __pycache__
 
 .storage
 .cloud
+
+bazarr/
+media/config/
+gluetun/
+jellyseerr/
+lidarr/
+nzbget/
+prowlarr/
+qbittorrent/
+radarr/
+sonarr/
+ytdl-sub/

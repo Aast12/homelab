@@ -24,8 +24,9 @@ services:
     volumes:
       - ./config:/config
       - /data/media:/data
-    devices:
-      - /dev/dri:/dev/dri #Use for Intel QuickSync
+#    TODO: enable igpu 
+#    devices:
+#      - /dev/dri:/dev/dri #Use for Intel QuickSync
     ports:
       - 8096:8096
       - 7359:7359/udp #Service Discovery
@@ -97,6 +98,15 @@ services:
       interval: 20s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
+
+  flaresolverr:
+    image: flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - LOG_LEVEL=info
+      - TZ=America/Monterrey
+    network_mode: service:gluetun 
     restart: unless-stopped
 
   qbittorrent:
