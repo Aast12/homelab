@@ -93,7 +93,7 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ping -c 1 www.google.com || exit 1
+      test: wget -q -O /dev/null http://localhost:8000/v1/publicip/ip || exit 1
       interval: 20s
       timeout: 10s
       retries: 5
