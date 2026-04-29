@@ -112,6 +112,32 @@ services:
     restart: unless-stopped
     volumes:
       - /data/upsnap:/app/pb_data
+  synapse:
+    container_name: synapse
+    image: ghcr.io/element-hq/synapse:latest
+    restart: unless-stopped
+    networks:
+      - proxy
+    volumes:
+      - /data/synapse:/data
+    environment:
+      SYNAPSE_SERVER_NAME: lab.alamst.me
+      SYNAPSE_REPORT_STATS: "no"
+    labels:
+      - "traefik.enable=true"
+      # Client + federation API on matrix subdomain
+      - "traefik.http.routers.synapse.rule=Host(`matrix.lab.alamst.me`)"
+      - "traefik.http.routers.synapse.entrypoints=websecure"
+      - "traefik.http.routers.synapse.tls=true"
+      - "traefik.http.routers.synapse.tls.certresolver=cloudflare"
+      - "traefik.http.services.synapse.loadbalancer.server.port=8008"
+      # Federation delegation: lab.alamst.me/.well-known/matrix/* -> synapse
+      - "traefik.http.routers.synapse-wk.rule=Host(`lab.alamst.me`) && PathPrefix(`/.well-known/matrix/`)"
+      - "traefik.http.routers.synapse-wk.entrypoints=websecure"
+      - "traefik.http.routers.synapse-wk.tls=true"
+      - "traefik.http.routers.synapse-wk.tls.certresolver=cloudflare"
+      - "traefik.http.routers.synapse-wk.priority=100"
+      - "traefik.http.routers.synapse-wk.service=synapse"
 
 networks:
   proxy:

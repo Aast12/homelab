@@ -10,6 +10,10 @@ pages:
         widgets:
           - type: calendar
             first-day-of-week: monday
+          - type: weather
+            location: Monterrey, Mexico 
+            units: metric 
+            hour-format: 24h 
 
           - type: to-do
 
@@ -48,11 +52,15 @@ pages:
                     url: https://jellyseerr.lab.alamst.me/
                     allow-insecure: true
                     icon: sh:jellyseerr
+                  - title: Matrix
+                    url: https://matrix.lab.alamst.me/
+                    allow-insecure: true
+                    icon: si:matrix
               - type: bookmarks
                 groups:
                   - title: General
                     links:
-                      - title: Proton Mail 
+                      - title: Proton Mail
                         url: https://mail.proton.me/u/2/inbox
                       - title: Github
                         url: https://github.com/
@@ -64,10 +72,38 @@ pages:
 
       - size: small 
         widgets:
-          - type: weather
-            location: Monterrey, Mexico 
-            units: metric 
-            hour-format: 24h 
+          - type: html
+            source: |
+              <style>
+                .posthog-widget {
+                  padding: 8px 12px;
+                }
+                .posthog-header {
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: var(--color-text-primary, #e6e6e6);
+                  margin-bottom: 8px;
+                  opacity: 0.9;
+                }
+                .posthog-container {
+                  width: 100%;
+                  height: 360px;
+                  border: none;
+                  overflow: hidden;
+                }
+                .posthog-container iframe {
+                  width: 100%;
+                  height: 100%;
+                  border: none;
+                  overflow: hidden;
+                }
+              </style>
+              <div class="posthog-widget">
+                <div class="posthog-header">AI cost</div>
+                <div class="posthog-container">
+                  <iframe src="https://us.posthog.com/embedded/wtT8Js_FOp31lDZmHed0OxwxDbUa_A" scrolling="no"></iframe>
+                </div>
+              </div>
 
           - type: markets
             markets:
