@@ -1,5 +1,6 @@
 # Determine what is "Secret"
 secrets.yaml
+secrets.env
 
 .env
 

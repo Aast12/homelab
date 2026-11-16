@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sure-backups
+  namespace: finance
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sure-pg-dump
+  namespace: finance
+spec:
+  schedule: "0 3 * * *"
+  timeZone: America/Mexico_City
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector:
+            kubernetes.io/hostname: k3s-01
+          containers:
+            - name: dump
+              image: postgres:17
+              command:
+                - bash
+                - -c
+                - |
+                  set -euo pipefail
+                  FILE=/backups/sure-$(date +%F).sql.gz
+                  pg_dump -h sure-postgres -U "$POSTGRES_USER" "$POSTGRES_DB" | gzip > "$FILE"
+                  gzip -t "$FILE"
+                  find /backups -name '*.sql.gz' -mtime +14 -delete
+                  ls -lh /backups
+              env:
+                - name: POSTGRES_USER
+                  valueFrom: { configMapKeyRef: { name: sure-config, key: POSTGRES_USER } }
+                - name: POSTGRES_DB
+                  valueFrom: { configMapKeyRef: { name: sure-config, key: POSTGRES_DB } }
+                - name: PGPASSWORD
+                  valueFrom: { secretKeyRef: { name: sure-secrets, key: POSTGRES_PASSWORD } }
+              volumeMounts:
+                - { name: backups, mountPath: /backups }
+          volumes:
+            - name: backups
+              persistentVolumeClaim: { claimName: sure-backups }
