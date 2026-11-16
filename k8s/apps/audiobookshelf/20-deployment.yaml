@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audiobookshelf
+  namespace: media
+  labels:
+    app.kubernetes.io/name: audiobookshelf
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: audiobookshelf
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: audiobookshelf
+    spec:
+      nodeSelector:
+        lab.alamst.me/media: "true"
+      containers:
+        - name: audiobookshelf
+          image: ghcr.io/advplyr/audiobookshelf:2.37.2
+          env:
+            - name: TZ
+              value: America/Mexico_City
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - { name: config,   mountPath: /config }
+            - { name: metadata, mountPath: /metadata }
+            - { name: library,  mountPath: /books,      subPath: books }
+            - { name: library,  mountPath: /audiobooks, subPath: audiobooks }
+            - { name: library,  mountPath: /podcasts,   subPath: podcasts }
+          readinessProbe:
+            httpGet: { path: /healthcheck, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthcheck, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits:   { memory: 1Gi }
+      volumes:
+        - name: config
+          persistentVolumeClaim: { claimName: abs-config }
+        - name: metadata
+          persistentVolumeClaim: { claimName: abs-metadata }
+        - name: library
+          persistentVolumeClaim: { claimName: abs-library }
