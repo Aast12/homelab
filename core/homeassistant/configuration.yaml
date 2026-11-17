@@ -13,9 +13,9 @@ scene: !include scenes.yaml
 http:
   use_x_forwarded_for: true
   trusted_proxies:
-    - 172.20.0.4        
-    - 172.20.0.0/16     
-    - 127.0.0.1         
+    # the proxy network's subnet, pinned in docker-compose.yml
+    - 172.20.0.0/16
+    - 127.0.0.1
 
 recorder:
   db_url: sqlite:////config/db_storage/home-assistant_v2.db

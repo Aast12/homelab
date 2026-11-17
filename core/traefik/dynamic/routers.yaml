@@ -1,125 +1,36 @@
+# Routes that Docker labels cannot express. Values come from core/.env through
+# the traefik container's environment: {{ env "X" }} is Traefik's file templating.
 http:
   routers:
+    # Home Assistant runs with host networking, so it has no labels Traefik can read.
     homeassistant:
-      rule: "Host(`ha.lab.alamst.me`)" 
-      entryPoints:
-        - websecure
+      rule: Host(`ha.{{ env "DOMAIN" }}`)
+      entryPoints: [websecure]
       service: homeassistant
-      tls:
-        certResolver: cloudflare 
-    audiobookshelf:
-      rule: "Host(`books.lab.alamst.me`)"
-      service: audiobookshelf
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: cloudflare
-    upsnap:
-      rule: "Host(`upsnap.lab.alamst.me`)"
-      service: upsnap 
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: cloudflare
-    jellyfin:
-      rule: "Host(`jellyfin.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: jellyfin
-      tls:
-        certResolver: cloudflare
-    jellyseerr:
-      rule: "Host(`jellyseerr.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: jellyseerr
-      tls:
-        certResolver: cloudflare
-    sonarr:
-      rule: "Host(`sonarr.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: sonarr
-      tls:
-        certResolver: cloudflare
-    radarr:
-      rule: "Host(`radarr.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: radarr
-      tls:
-        certResolver: cloudflare
-    lidarr:
-      rule: "Host(`lidarr.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: lidarr
-      tls:
-        certResolver: cloudflare
-    bazarr:
-      rule: "Host(`bazarr.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: bazarr
-      tls:
-        certResolver: cloudflare
-    prowlarr:
-      rule: "Host(`prowlarr.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: prowlarr
-      tls:
-        certResolver: cloudflare
-    qbittorrent:
-      rule: "Host(`qb.lab.alamst.me`)"
-      entryPoints:
-        - websecure
-      service: qbittorrent
-      tls:
-        certResolver: cloudflare
-  
+
+    # Fallback: any name under DOMAIN that no Pi router claims goes to the
+    # cluster's Traefik, which routes it by its Ingresses. Priority 1 makes every
+    # other router win, so a Pi service is a Docker label and a cluster service
+    # is an Ingress, and neither side needs to know about the other.
+    cluster:
+      rule: HostRegexp(`^.+\.{{ env "DOMAIN" | replace "." "\\." }}$`)
+      priority: 1
+      entryPoints: [websecure]
+      service: cluster
+
   services:
     homeassistant:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:8123"
-    audiobookshelf:
+          - url: http://host.docker.internal:8123
+    cluster:
       loadBalancer:
+        serversTransport: cluster
         servers:
-          - url: "http://192.168.0.170:13378"
-    upsnap:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8090"
-    jellyfin:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:8096"
-    jellyseerr:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:5055"
-    sonarr:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:8989"
-    radarr:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:7878"
-    lidarr:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:8686"
-    bazarr:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:6767"
-    prowlarr:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:9696"
-    qbittorrent:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.0.170:8080"
+          - url: https://{{ env "CLUSTER_IP" }}
+
+  serversTransports:
+    # The cluster serves the cert-manager wildcard certificate, which also
+    # covers DOMAIN itself, so the Pi can verify it under that name.
+    cluster:
+      serverName: '{{ env "DOMAIN" }}'
