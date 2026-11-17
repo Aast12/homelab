@@ -16,8 +16,7 @@ blocking:
 customDNS:
   customTTL: 1h
   mapping:
-    lab.alamst.me: 192.168.0.133
-    '*.lab.alamst.me': 192.168.0.133
+    lab.alamst.me: 192.168.1.11  
 ports:
   dns: 53
   http: 4000
