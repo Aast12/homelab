@@ -129,7 +129,3 @@ configs:
 networks:
   proxy:
     name: proxy
-    # fixed so homeassistant/configuration.yaml can trust Traefik's address
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16

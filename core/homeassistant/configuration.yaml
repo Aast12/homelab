@@ -13,8 +13,9 @@ scene: !include scenes.yaml
 http:
   use_x_forwarded_for: true
   trusted_proxies:
-    # the proxy network's subnet, pinned in docker-compose.yml
-    - 172.20.0.0/16
+    # Traefik reaches HA from the proxy Docker network, whichever range
+    # Docker gives it; 172.16.0.0/12 is Docker's default pool for bridges
+    - 172.16.0.0/12
     - 127.0.0.1
 
 recorder:

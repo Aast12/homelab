@@ -32,14 +32,6 @@ pages:
                     url: https://ha.${DOMAIN}/
                     allow-insecure: true
                     icon: si:homeassistant
-                  - title: miniflux 
-                    url: https://miniflux.${DOMAIN}/
-                    allow-insecure: true
-                    icon: si:rss
-                  - title: Wealthfolio 
-                    url: https://wealth.${DOMAIN}/
-                    allow-insecure: true
-                    icon: sh:wealthfolio
                   - title: Audiobookshelf
                     url: https://books.${DOMAIN}/
                     allow-insecure: true
