@@ -1,0 +1,19 @@
+# kubectl apply -k k8s/apps/arr/   (needs secrets.env, see secrets.env.example,
+# and Jellyfin's media-library claim from k8s/apps/jellyfin/)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - flaresolverr.yaml
+  - prowlarr.yaml
+  - sonarr.yaml
+  - radarr.yaml
+  - lidarr.yaml
+  - bazarr.yaml
+  - jellyseerr.yaml
+  - downloads.yaml
+secretGenerator:
+  - name: vpn
+    namespace: media
+    envs: [secrets.env]
+generatorOptions:
+  disableNameSuffixHash: true

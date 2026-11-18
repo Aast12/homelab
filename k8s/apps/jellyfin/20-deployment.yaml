@@ -39,7 +39,9 @@ spec:
           volumeMounts:
             - { name: config, mountPath: /config }
             - { name: cache,  mountPath: /cache }
-            - { name: media,  mountPath: /media, readOnly: true }
+            # /data, as in the old Compose stack and the arr apps, so library
+            # paths in a migrated config stay valid
+            - { name: media,  mountPath: /data, readOnly: true }
             - { name: dri,    mountPath: /dev/dri }
           startupProbe:
             httpGet: { path: /health, port: http }

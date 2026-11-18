@@ -1,0 +1,100 @@
+# Reads and writes the media library at /data, the same path as the old
+# Compose stack, so paths saved in its settings stay valid.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: radarr-config
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: radarr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: radarr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: radarr
+    spec:
+      nodeSelector:
+        lab.alamst.me/media: "true"
+      containers:
+        - name: radarr
+          image: lscr.io/linuxserver/radarr:7.0.3
+          env:
+            - { name: PUID, value: "1000" }
+            - { name: PGID, value: "1000" }
+            - { name: TZ, value: America/Mexico_City }
+          ports:
+            - name: http
+              containerPort: 7878
+          volumeMounts:
+            - { name: config, mountPath: /config }
+            - { name: media,  mountPath: /data }
+          startupProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits:   { memory: 1Gi }
+      volumes:
+        - name: config
+          persistentVolumeClaim: { claimName: radarr-config }
+        - name: media
+          persistentVolumeClaim: { claimName: media-library }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr
+  namespace: media
+spec:
+  selector:
+    app.kubernetes.io/name: radarr
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: radarr
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [radarr.lab.alamst.me]
+  rules:
+    - host: radarr.lab.alamst.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: radarr
+                port:
+                  name: http

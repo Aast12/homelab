@@ -40,6 +40,10 @@ pages:
                     url: https://jellyfin.${DOMAIN}/
                     allow-insecure: true
                     icon: si:jellyfin
+                  - title: Jellyseerr
+                    url: https://jellyseerr.${DOMAIN}/
+                    allow-insecure: true
+                    icon: sh:jellyseerr
               - type: bookmarks
                 groups:
                   - title: General
@@ -129,6 +133,34 @@ pages:
                   - 401
                 icon: si:traefikproxy
 
+          - type: monitor
+            cache: 1m
+            title: Media
+            sites:
+              - title: Sonarr
+                url: https://sonarr.${DOMAIN}/
+                allow-insecure: true
+                icon: si:sonarr
+              - title: Radarr
+                url: https://radarr.${DOMAIN}/
+                allow-insecure: true
+                icon: si:radarr
+              - title: Lidarr
+                url: https://lidarr.${DOMAIN}/
+                allow-insecure: true
+                icon: sh:lidarr
+              - title: Bazarr
+                url: https://bazarr.${DOMAIN}/
+                allow-insecure: true
+                icon: sh:bazarr
+              - title: Prowlarr
+                url: https://prowlarr.${DOMAIN}/
+                allow-insecure: true
+                icon: sh:prowlarr
+              - title: QBittorrent
+                url: https://qb.${DOMAIN}/
+                allow-insecure: true
+                icon: si:qbittorrent
 
       - size: small 
         widgets:
