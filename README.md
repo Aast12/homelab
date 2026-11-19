@@ -26,6 +26,11 @@ core/setup.sh
 
 Point the router's DHCP DNS server at the Pi so every device resolves the domain through Blocky.
 
+Away from home, devices reach the lab over NetBird. `setup.sh` points the public records for the
+domain and `*.` the domain at the Pi's NetBird address, so they resolve anywhere without clashing
+with the network you are on; at home Blocky answers with the Pi's home address. Re-run
+`setup.sh` if the Pi ever gets a new NetBird address.
+
 ## Set up the cluster
 
 Give every node a stable address, fill in `k8s/cluster.env`, then install k3s on each machine
