@@ -27,8 +27,6 @@ spec:
       labels:
         app.kubernetes.io/name: sure-postgres
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k3s-02
       containers:
         - name: postgres
           image: postgres:17

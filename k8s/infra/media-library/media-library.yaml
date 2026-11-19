@@ -1,0 +1,39 @@
+# The media library: files already on disk at /data/media on the media nodes
+# (`lab.sh node ... --media` labels a node and creates the folder). Jellyfin
+# and the arr stack mount this one claim.
+#
+# A pod sees the disk of the node it runs on. With one media node that is the
+# whole story; a second media node needs the same files at the same path (a
+# shared disk or NAS mounted there).
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media-library
+spec:
+  capacity:
+    storage: 500Gi                          # informational for local volumes
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain     # never delete the files with the claim
+  storageClassName: manual-local
+  local:
+    path: /data/media
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: lab.alamst.me/media
+              operator: In
+              values: ["true"]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-library
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: manual-local
+  volumeName: media-library
+  resources:
+    requests:
+      storage: 500Gi

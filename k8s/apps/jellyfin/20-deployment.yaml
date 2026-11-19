@@ -17,8 +17,7 @@ spec:
       labels:
         app.kubernetes.io/name: jellyfin
     spec:
-      # Media nodes only (today: k3s-01). Label a node with
-      # `kubectl label node <node> lab.alamst.me/media=true` to make it one.
+      # media nodes only: `lab.sh node <type> --media <host>` makes one
       nodeSelector:
         lab.alamst.me/media: "true"
       containers:

@@ -1,5 +1,3 @@
-# kubectl apply -k k8s/apps/arr/   (setup in the root README.md: needs secrets.env
-# and Jellyfin's media-library claim from k8s/apps/jellyfin/)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:

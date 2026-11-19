@@ -27,8 +27,16 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
-          nodeSelector:
-            kubernetes.io/hostname: k3s-01
+          # keep the dumps on a different machine from the database; the
+          # first run picks the node and the backup volume stays there
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: kubernetes.io/hostname
+                  labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: sure-postgres
+                  namespaces: [finance]
           containers:
             - name: dump
               image: postgres:17

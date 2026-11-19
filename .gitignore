@@ -32,3 +32,5 @@ qbittorrent/
 radarr/
 sonarr/
 ytdl-sub/
+k8s/cluster.env
+k8s/kubeconfig

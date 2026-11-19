@@ -50,7 +50,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik/dynamic:/dynamic:ro
-      - /data/traefik/letsencrypt:/letsencrypt
+      - ${DATA_DIR}/traefik/letsencrypt:/letsencrypt
     command:
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
@@ -106,7 +106,7 @@ services:
     image: "ghcr.io/home-assistant/home-assistant:latest"
     volumes:
       - ./homeassistant:/config
-      - /data/homeassistant:/config/db_storage
+      - ${DATA_DIR}/homeassistant:/config/db_storage
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
