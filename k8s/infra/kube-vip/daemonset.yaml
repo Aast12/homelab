@@ -1,0 +1,57 @@
+# kube-vip gives the cluster one floating address, CLUSTER_VIP from
+# k8s/cluster.env. One node holds it at a time (leader election) and another
+# takes over if that node goes down, so the Pi can always forward to the same
+# address. It replaces k3s's ServiceLB, which `lab.sh node server` disables.
+# Generated with `kube-vip manifest daemonset --services --inCluster --arp
+# --servicesElection`, v1.3.1. The interface is the one with the default route.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kube-vip
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kube-vip
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-vip
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-vip
+    spec:
+      hostNetwork: true
+      serviceAccountName: kube-vip
+      containers:
+        - name: kube-vip
+          image: ghcr.io/kube-vip/kube-vip:v1.3.1
+          args: [manager]
+          env:
+            - { name: vip_arp, value: "true" }
+            - name: vip_nodename
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+            - { name: dns_mode, value: first }
+            - { name: dhcp_mode, value: ipv4 }
+            - { name: svc_enable, value: "true" }
+            - { name: svc_leasename, value: plndr-svcs-lock }
+            - { name: svc_election, value: "true" }
+            - { name: prometheus_server, value: ":2112" }
+          securityContext:
+            capabilities:
+              add: [NET_ADMIN, NET_RAW]
+              drop: [ALL]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+---
+# k3s's bundled Traefik asks kube-vip for the floating address.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: traefik
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    service:
+      annotations:
+        kube-vip.io/loadbalancerIPs: "${CLUSTER_VIP}"

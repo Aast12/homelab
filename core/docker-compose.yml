@@ -1,3 +1,13 @@
+# core/docker-compose.yml (on the Pi)
+# Every home-specific value (domain, IPs, timezone, place) comes from core/.env;
+# see .env.example.
+#
+# How names resolve: Blocky answers ${DOMAIN} and every name under it with the
+# Pi. Traefik here serves the Pi's own services (labels below and
+# traefik/dynamic/routers.yaml) and forwards every other name to the cluster.
+# Adding a service never touches DNS:
+#   - on the Pi:      a Host(`<name>.${DOMAIN}`) router label
+#   - in the cluster: an Ingress for <name>.${DOMAIN}
 services:
   blocky:
     image: spx01/blocky
@@ -9,10 +19,15 @@ services:
       - "53:53/udp"
       - "4000:4000/tcp"
     environment:
-      - TZ=America/Monterrey 
+      - TZ=${TZ}
+      # a folder: Blocky merges every file in it, in name order
+      - BLOCKY_CONFIG_FILE=/app/config
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./blocky/config.yml:/app/config.yml:ro 
+      - ./blocky/config.yml:/app/config/10-base.yml:ro
+    configs:
+      - source: blocky-home
+        target: /app/config/20-home.yml
   traefik:
     image: "traefik:latest"
     container_name: traefik
@@ -20,81 +35,78 @@ services:
     security_opt:
       - no-new-privileges:true
     extra_hosts:
-      - "host.docker.internal:host-gateway" 
-    networks: 
+      - "host.docker.internal:host-gateway"
+    networks:
       - proxy
     ports:
       - "80:80"
       - "443:443"
       - "8080:8080"
     environment:
-      # create this token at dash.cloudflare.com/profile/api-tokens
-      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN} 
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN}
+      # read by traefik/dynamic/routers.yaml
+      - DOMAIN=${DOMAIN}
+      - CLUSTER_IP=${CLUSTER_IP}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./traefik/dynamic:/dynamic:ro 
-      - /data/traefik/letsencrypt:/letsencrypt
+      - ./traefik/dynamic:/dynamic:ro
+      - ${DATA_DIR}/traefik/letsencrypt:/letsencrypt
     command:
-      # EntryPoints
-      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
-      - "--entrypoints.websecure.http.tls=true"
-      # EntryPoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
       - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
       - "--entrypoints.websecure.address=:443"
-      
-      # Providers
+      # one wildcard certificate for every router on websecure, so routers need
+      # no tls labels; it also covers the fallback to the cluster
+      - "--entrypoints.websecure.http.tls.certresolver=cloudflare"
+      - "--entrypoints.websecure.http.tls.domains[0].main=${DOMAIN}"
+      - "--entrypoints.websecure.http.tls.domains[0].sans=*.${DOMAIN}"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--providers.docker.network=proxy"
-      - "--providers.file.directory=/dynamic" # Tells Traefik to read our external config
+      - "--providers.file.directory=/dynamic"
       - "--providers.file.watch=true"
-
-      # API & Dashboard
       - "--api.dashboard=true"
-
-      # Observability 
       - "--log.level=ERROR"
       - "--accesslog=true"
-
-      # === CLOUDFLARE DNS CHALLENGE SETUP ===
       - "--certificatesresolvers.cloudflare.acme.dnschallenge=true"
       - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
-      # Delay is sometimes needed for DNS propagation, 45s is safe
-      - "--certificatesresolvers.cloudflare.acme.dnschallenge.delaybeforecheck=45" 
-      - "--certificatesresolvers.cloudflare.acme.email=alamst@proton.me"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.delaybeforecheck=45"
+      # Blocky answers ${DOMAIN} names itself and returns no TXT records for
+      # them, so check the challenge record on public resolvers instead
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,1.0.0.1:53"
+      - "--certificatesresolvers.cloudflare.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.cloudflare.acme.storage=/letsencrypt/acme.json"
-
     labels:
       - "traefik.enable=true"
-      # Dashboard Router
-      - "traefik.http.routers.dashboard.rule=Host(`traefik.lab.alamst.me`)"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
       - "traefik.http.routers.dashboard.service=api@internal"
-      - "traefik.http.routers.dashboard.tls.certresolver=cloudflare" # Must match resolver name above
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
-      # Middleware
       - "traefik.http.middlewares.dashboard-auth.basicauth.users=admin:$$apr1$$N0gCuYjg$$F.GHIFE8sJaKJJL5aK.KA."
   glance:
     container_name: glance
     image: glanceapp/glance
     restart: unless-stopped
+    environment:
+      # read by glance/glance.yml
+      - DOMAIN=${DOMAIN}
+      - WEATHER_LOCATION=${WEATHER_LOCATION}
     volumes:
       - ./glance:/app/config
-    networks: 
+    networks:
       - proxy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.glance.rule=Host(`lab.alamst.me`)"
+      - "traefik.http.routers.glance.rule=Host(`${DOMAIN}`)"
       - "traefik.http.routers.glance.entrypoints=websecure"
-      - "traefik.http.routers.glance.tls=true"
-      - "traefik.http.routers.glance.tls.certresolver=cloudflare"
   homeassistant:
     container_name: homeassistant
     image: "ghcr.io/home-assistant/home-assistant:latest"
     volumes:
       - ./homeassistant:/config
-      - /data/homeassistant:/config/db_storage
+      - ${DATA_DIR}/homeassistant:/config/db_storage
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
@@ -104,40 +116,15 @@ services:
       - NET_ADMIN
       - NET_RAW
     environment:
-      TZ: America/Monterrey
-  upsnap:
-    container_name: upsnap
-    image: ghcr.io/seriousm4x/upsnap:5
-    network_mode: host
-    restart: unless-stopped
-    volumes:
-      - /data/upsnap:/app/pb_data
-  synapse:
-    container_name: synapse
-    image: ghcr.io/element-hq/synapse:latest
-    restart: unless-stopped
-    networks:
-      - proxy
-    volumes:
-      - /data/synapse:/data
-    environment:
-      SYNAPSE_SERVER_NAME: lab.alamst.me
-      SYNAPSE_REPORT_STATS: "no"
-    labels:
-      - "traefik.enable=true"
-      # Client + federation API on matrix subdomain
-      - "traefik.http.routers.synapse.rule=Host(`matrix.lab.alamst.me`)"
-      - "traefik.http.routers.synapse.entrypoints=websecure"
-      - "traefik.http.routers.synapse.tls=true"
-      - "traefik.http.routers.synapse.tls.certresolver=cloudflare"
-      - "traefik.http.services.synapse.loadbalancer.server.port=8008"
-      # Federation delegation: lab.alamst.me/.well-known/matrix/* -> synapse
-      - "traefik.http.routers.synapse-wk.rule=Host(`lab.alamst.me`) && PathPrefix(`/.well-known/matrix/`)"
-      - "traefik.http.routers.synapse-wk.entrypoints=websecure"
-      - "traefik.http.routers.synapse-wk.tls=true"
-      - "traefik.http.routers.synapse-wk.tls.certresolver=cloudflare"
-      - "traefik.http.routers.synapse-wk.priority=100"
-      - "traefik.http.routers.synapse-wk.service=synapse"
+      TZ: ${TZ}
+
+configs:
+  blocky-home:
+    content: |
+      customDNS:
+        customTTL: 1h
+        mapping:
+          ${DOMAIN}: ${PI_IP}
 
 networks:
   proxy:

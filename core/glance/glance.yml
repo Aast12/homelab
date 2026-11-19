@@ -11,7 +11,7 @@ pages:
           - type: calendar
             first-day-of-week: monday
           - type: weather
-            location: Monterrey, Mexico 
+            location: ${WEATHER_LOCATION}
             units: metric 
             hour-format: 24h 
 
@@ -29,33 +29,21 @@ pages:
                 title: Apps
                 sites:
                   - title: Home Assistant 
-                    url: https://ha.lab.alamst.me/
+                    url: https://ha.${DOMAIN}/
                     allow-insecure: true
                     icon: si:homeassistant
-                  - title: miniflux 
-                    url: https://miniflux.lab.alamst.me/
-                    allow-insecure: true
-                    icon: si:rss
-                  - title: Wealthfolio 
-                    url: https://wealth.lab.alamst.me/
-                    allow-insecure: true
-                    icon: sh:wealthfolio
                   - title: Audiobookshelf
-                    url: https://books.lab.alamst.me/
+                    url: https://books.${DOMAIN}/
                     allow-insecure: true
                     icon: si:audiobookshelf
                   - title: Jellyfin
-                    url: https://jellyfin.lab.alamst.me/
+                    url: https://jellyfin.${DOMAIN}/
                     allow-insecure: true
                     icon: si:jellyfin
                   - title: Jellyseerr
-                    url: https://jellyseerr.lab.alamst.me/
+                    url: https://jellyseerr.${DOMAIN}/
                     allow-insecure: true
                     icon: sh:jellyseerr
-                  - title: Matrix
-                    url: https://matrix.lab.alamst.me/
-                    allow-insecure: true
-                    icon: si:matrix
               - type: bookmarks
                 groups:
                   - title: General
@@ -139,42 +127,38 @@ pages:
             title: Admin
             sites:
               - title: traefik 
-                url: https://traefik.lab.alamst.me/
+                url: https://traefik.${DOMAIN}/
                 allow-insecure: true
                 alt-status-codes:
                   - 401
                 icon: si:traefikproxy
-              - title: Upsnap
-                url: https://upsnap.lab.alamst.me/
-                allow-insecure: true
-                icon: sh:upsnap
 
           - type: monitor
             cache: 1m
             title: Media
             sites:
               - title: Sonarr
-                url: https://sonarr.lab.alamst.me/
+                url: https://sonarr.${DOMAIN}/
                 allow-insecure: true
                 icon: si:sonarr
               - title: Radarr
-                url: https://radarr.lab.alamst.me/
+                url: https://radarr.${DOMAIN}/
                 allow-insecure: true
                 icon: si:radarr
               - title: Lidarr
-                url: https://lidarr.lab.alamst.me/
+                url: https://lidarr.${DOMAIN}/
                 allow-insecure: true
                 icon: sh:lidarr
               - title: Bazarr
-                url: https://bazarr.lab.alamst.me/
+                url: https://bazarr.${DOMAIN}/
                 allow-insecure: true
                 icon: sh:bazarr
               - title: Prowlarr
-                url: https://prowlarr.lab.alamst.me/
+                url: https://prowlarr.${DOMAIN}/
                 allow-insecure: true
                 icon: sh:prowlarr
               - title: QBittorrent
-                url: https://qb.lab.alamst.me/
+                url: https://qb.${DOMAIN}/
                 allow-insecure: true
                 icon: si:qbittorrent
 

@@ -1,0 +1,92 @@
+# Requests. Reaches Jellyfin at http://jellyfin.media.svc.cluster.local.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyseerr-config
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jellyseerr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: jellyseerr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jellyseerr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jellyseerr
+    spec:
+      containers:
+        - name: jellyseerr
+          image: fallenbagel/jellyseerr:2.7.3
+          env:
+            - { name: TZ, value: America/Mexico_City }
+          ports:
+            - name: http
+              containerPort: 5055
+          volumeMounts:
+            - { name: config, mountPath: /app/config }
+          startupProbe:
+            httpGet: { path: /api/v1/status, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /api/v1/status, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/v1/status, port: http }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits:   { memory: 512Mi }
+      volumes:
+        - name: config
+          persistentVolumeClaim: { claimName: jellyseerr-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyseerr
+  namespace: media
+spec:
+  selector:
+    app.kubernetes.io/name: jellyseerr
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jellyseerr
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [jellyseerr.lab.alamst.me]
+  rules:
+    - host: jellyseerr.lab.alamst.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jellyseerr
+                port:
+                  name: http
