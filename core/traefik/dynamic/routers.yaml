@@ -1,0 +1,36 @@
+# Routes that Docker labels cannot express. Values come from core/.env through
+# the traefik container's environment: {{ env "X" }} is Traefik's file templating.
+http:
+  routers:
+    # Home Assistant runs with host networking, so it has no labels Traefik can read.
+    homeassistant:
+      rule: Host(`ha.{{ env "DOMAIN" }}`)
+      entryPoints: [websecure]
+      service: homeassistant
+
+    # Fallback: any name under DOMAIN that no Pi router claims goes to the
+    # cluster's Traefik, which routes it by its Ingresses. Priority 1 makes every
+    # other router win, so a Pi service is a Docker label and a cluster service
+    # is an Ingress, and neither side needs to know about the other.
+    cluster:
+      rule: HostRegexp(`^.+\.{{ env "DOMAIN" | replace "." "\\." }}$`)
+      priority: 1
+      entryPoints: [websecure]
+      service: cluster
+
+  services:
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: http://host.docker.internal:8123
+    cluster:
+      loadBalancer:
+        serversTransport: cluster
+        servers:
+          - url: https://{{ env "CLUSTER_IP" }}
+
+  serversTransports:
+    # The cluster serves the cert-manager wildcard certificate, which also
+    # covers DOMAIN itself, so the Pi can verify it under that name.
+    cluster:
+      serverName: '{{ env "DOMAIN" }}'

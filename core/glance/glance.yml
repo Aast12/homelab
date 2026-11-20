@@ -1,0 +1,175 @@
+theme:
+  background-color: 50 1 6
+  primary-color: 24 97 58
+  negative-color: 209 88 54
+
+pages:
+  - name: Home
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            first-day-of-week: monday
+          - type: weather
+            location: ${WEATHER_LOCATION}
+            units: metric 
+            hour-format: 24h 
+
+          - type: to-do
+
+      - size: full
+        widgets:
+          - type: search
+            autofocus: true
+
+          - type: split-column
+            widgets:
+              - type: monitor
+                cache: 1m
+                title: Apps
+                sites:
+                  - title: Home Assistant 
+                    url: https://ha.${DOMAIN}/
+                    allow-insecure: true
+                    icon: si:homeassistant
+                  - title: Audiobookshelf
+                    url: https://books.${DOMAIN}/
+                    allow-insecure: true
+                    icon: si:audiobookshelf
+                  - title: Jellyfin
+                    url: https://jellyfin.${DOMAIN}/
+                    allow-insecure: true
+                    icon: si:jellyfin
+                  - title: Jellyseerr
+                    url: https://jellyseerr.${DOMAIN}/
+                    allow-insecure: true
+                    icon: sh:jellyseerr
+              - type: bookmarks
+                groups:
+                  - title: General
+                    links:
+                      - title: Proton Mail
+                        url: https://mail.proton.me/u/2/inbox
+                      - title: Github
+                        url: https://github.com/
+                      - title: Github
+                        url: https://github.com/
+                      - title: Amazon
+                        url: https://www.amazon.com.mx/
+
+
+      - size: small 
+        widgets:
+          - type: html
+            source: |
+              <style>
+                .posthog-widget {
+                  padding: 8px 12px;
+                }
+                .posthog-header {
+                  font-size: 14px;
+                  font-weight: 600;
+                  color: var(--color-text-primary, #e6e6e6);
+                  margin-bottom: 8px;
+                  opacity: 0.9;
+                }
+                .posthog-container {
+                  width: 100%;
+                  height: 360px;
+                  border: none;
+                  overflow: hidden;
+                }
+                .posthog-container iframe {
+                  width: 100%;
+                  height: 100%;
+                  border: none;
+                  overflow: hidden;
+                }
+              </style>
+              <div class="posthog-widget">
+                <div class="posthog-header">AI cost</div>
+                <div class="posthog-container">
+                  <iframe src="https://us.posthog.com/embedded/wtT8Js_FOp31lDZmHed0OxwxDbUa_A" scrolling="no"></iframe>
+                </div>
+              </div>
+
+          - type: markets
+            markets:
+              - symbol: SPY
+                name: S&P 500
+              - symbol: VT
+                name: Vanguard Total
+              - symbol: BTC-USD
+                name: Bitcoin
+              - symbol: NVDA
+                name: NVIDIA
+              - symbol: AAPL
+                name: Apple
+              - symbol: MSFT
+                name: Microsoft
+
+  - name: Admin
+    columns:
+      - size: small
+        widgets:
+          - type: server-stats
+            servers:
+              - type: local
+                name: Raspberry
+
+      - size: full
+        widgets:
+          - type: search
+            autofocus: true
+
+          - type: monitor
+            cache: 1m
+            title: Admin
+            sites:
+              - title: traefik 
+                url: https://traefik.${DOMAIN}/
+                allow-insecure: true
+                alt-status-codes:
+                  - 401
+                icon: si:traefikproxy
+
+          - type: monitor
+            cache: 1m
+            title: Media
+            sites:
+              - title: Sonarr
+                url: https://sonarr.${DOMAIN}/
+                allow-insecure: true
+                icon: si:sonarr
+              - title: Radarr
+                url: https://radarr.${DOMAIN}/
+                allow-insecure: true
+                icon: si:radarr
+              - title: Lidarr
+                url: https://lidarr.${DOMAIN}/
+                allow-insecure: true
+                icon: sh:lidarr
+              - title: Bazarr
+                url: https://bazarr.${DOMAIN}/
+                allow-insecure: true
+                icon: sh:bazarr
+              - title: Prowlarr
+                url: https://prowlarr.${DOMAIN}/
+                allow-insecure: true
+                icon: sh:prowlarr
+              - title: QBittorrent
+                url: https://qb.${DOMAIN}/
+                allow-insecure: true
+                icon: si:qbittorrent
+
+      - size: small 
+        widgets:
+
+          - type: releases
+            cache: 1d
+            repositories:
+              - glanceapp/glance
+              - jellyfin/jellyfin
+              - home-assistant/core
+              - syncthing/syncthing
+
