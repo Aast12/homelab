@@ -118,6 +118,29 @@ class Credit(unittest.TestCase):
             ni.parse(CREDIT.replace("+$200.00", "+$205.00"))
 
 
+class WrappedYearsAndRevolvingBalance(unittest.TestCase):
+    def test_a_year_on_the_next_line_belongs_to_the_date_above(self):
+        wrapped = DEBIT.replace(" 10 SEP 2026          Juan Ejemplo Renta",
+                                " 10 SEP               Juan Ejemplo Renta").replace(
+            "-$65.70\n", "-$65.70\n 2026\n", 1)
+        self.assertIn(" 10 SEP               Juan", wrapped)
+        st = ni.parse(wrapped)
+        self.assertEqual([t.name for t in st.transactions].count("Juan Ejemplo Renta"), 1)
+        self.assertEqual(st.transactions[0].notes, "Comisión N1 $34.80")
+
+    def test_revolving_balance_lines_are_skipped(self):
+        text = CREDIT.replace(
+            " 05 OCT 2026    06 OCT 2026     ¡Gracias",
+            " 16 SEP 2026    16 SEP 2026     Saldo revolvente | RFC: S.I.          +$900.00\n"
+            " 16 SEP 2026    16 SEP 2026     Crédito de saldo revolvente | RFC: S.I.  -$900.00\n"
+            " 05 OCT 2026    06 OCT 2026     ¡Gracias").replace("Total de abonos      -$400.00",
+                                                            "Total de abonos      -$1,300.00")
+        st = ni.parse(text)
+        self.assertNotIn("Saldo revolvente", [t.name for t in st.transactions])
+        self.assertNotIn("Crédito de saldo revolvente", [t.name for t in st.transactions])
+        self.assertEqual(len(st.transactions), 5)
+
+
 class KeepUploads(unittest.TestCase):
     def test_every_upload_is_kept_once_with_each_attempt(self):
         import json, os, tempfile
