@@ -10,14 +10,6 @@ automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
 
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    # Traefik reaches HA from the proxy Docker network, whichever range
-    # Docker gives it; 172.16.0.0/12 is Docker's default pool for bridges
-    - 172.16.0.0/12
-    - 127.0.0.1
-
 recorder:
   db_url: sqlite:////config/db_storage/home-assistant_v2.db
 
