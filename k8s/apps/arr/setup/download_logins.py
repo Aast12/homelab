@@ -20,11 +20,20 @@ QBT = os.environ.get("QBT_CONF", "/qbittorrent/qBittorrent/qBittorrent.conf")
 NZBGET = os.environ.get("NZBGET_CONF", "/nzbget/nzbget.conf")
 
 
-def ini_set(path, section, want, label):
-    """Set keys in one [section] of an INI-style file (section=None: no sections)."""
+def ini_set(path, section, want, label, default=None):
+    """Set keys in one [section] of an INI-style file (section=None: no sections).
+    A missing file is created from `default` if given, else left for the app."""
     if not os.path.exists(path):
-        print(f"{label}: no config yet; the setup Job sets the login after first start")
-        return
+        if default is None:
+            print(f"{label}: no config yet; the setup Job sets the login after first start")
+            return
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w").write(default)
+        for p in (os.path.dirname(path), path):
+            try:
+                os.chown(p, 1000, 1000)
+            except PermissionError:
+                pass
     lines = open(path).read().splitlines()
     cur, values = None, {}
     for line in lines:
@@ -77,7 +86,22 @@ def qbt_hash(stored):
                                         base64.b64encode(pbkdf2(PASSWORD, salt)).decode())
 
 
+# On a first start there is no qBittorrent.conf yet, and without one qBittorrent
+# starts with a random password the setup Job can't know. Write the image's
+# defaults (accepted legal notice, no UPnP) so the login can go in now; the
+# image only copies its own defaults when the file is missing.
+QBT_DEFAULT = """[LegalNotice]
+Accepted=true
+
+[Preferences]
+Connection\\UPnP=false
+
+[WebUI]
+Address=*
+ServerDomains=*
+"""
 # qBittorrent 5 keeps Web UI settings in [WebUI] (4.x used [Preferences] WebUI\...).
-ini_set(QBT, "WebUI", {"Username": USER, "Password_PBKDF2": qbt_hash, "LocalHostAuth": "false"}, "qBittorrent")
+ini_set(QBT, "WebUI", {"Username": USER, "Password_PBKDF2": qbt_hash, "LocalHostAuth": "false"}, "qBittorrent",
+        default=QBT_DEFAULT)
 # nzbget.conf has no sections; ini_set's section=None matches lines before any [header].
 ini_set(NZBGET, None, {"ControlUsername": USER, "ControlPassword": PASSWORD}, "nzbget")
