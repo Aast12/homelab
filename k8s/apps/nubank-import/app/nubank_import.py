@@ -45,6 +45,12 @@ class StatementError(Exception):
     """The PDF is not a statement we know, or it does not add up."""
 
 
+class SureError(RuntimeError):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
 @dataclasses.dataclass
 class Txn:
     date: dt.date
@@ -269,7 +275,7 @@ class Sure:
                 return r.status, json.loads(r.read() or b"{}")
         except urllib.error.HTTPError as e:
             detail = e.read().decode(errors="replace")[:500]
-            raise RuntimeError(f"Sure {method} {path}: HTTP {e.code} {detail}") from None
+            raise SureError(e.code, f"Sure {method} {path}: HTTP {e.code} {detail}") from None
 
     def account_id(self, name: str) -> str:
         _, res = self.call("GET", "/api/v1/accounts?per_page=100")
@@ -313,14 +319,22 @@ def import_statement(st: Statement, pdf: bytes, filename: str, sure: Sure,
     sure.call("POST", "/api/v1/valuations", {"upsert": True, "valuation": {
         "account_id": account, "date": st.period_end.isoformat(), "amount": str(st.balance),
         "notes": f"Saldo según estado de cuenta Nu {st.period_start} a {st.period_end}"}})
-    status, res = sure.upload_statement(account, filename, pdf)
+    # The statement vault API exists only in newer Sure (not v0.7.6); without
+    # it the transactions and balance are still in, so report and carry on.
+    try:
+        _, res = sure.upload_statement(account, filename, pdf)
+        filed = "already in Sure" if (res.get("meta") or {}).get("duplicate") else "yes"
+    except SureError as e:
+        if e.status != 404:
+            raise
+        filed = "no (this Sure version has no statement vault)"
     return {
         "account": names[st.kind],
         "period": f"{st.period_start} to {st.period_end}",
         "transactions_created": created,
         "transactions_already_there": existing,
         "balance": str(st.balance),
-        "statement_filed": "already in Sure" if (res.get("meta") or {}).get("duplicate") else "yes",
+        "statement_filed": filed,
     }
 
 
