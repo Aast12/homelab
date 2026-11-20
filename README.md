@@ -26,6 +26,11 @@ core/setup.sh
 
 Point the router's DHCP DNS server at the Pi so every device resolves the domain through Blocky.
 
+Home Assistant keeps its HTTP settings outside the repo. Open it once directly at
+`http://<Pi address>:8123`, go to Settings → System → Network, turn on the reverse proxy
+(X-Forwarded-For), and trust `172.16.0.0/12`, the range Docker gives Traefik's network. Until then,
+`https://ha.<domain>` answers 400.
+
 Away from home, devices reach the lab over NetBird. `setup.sh` points the public records for the
 domain and `*.` the domain at the Pi's NetBird address, so they resolve anywhere without clashing
 with the network you are on; at home Blocky answers with the Pi's home address. Re-run
