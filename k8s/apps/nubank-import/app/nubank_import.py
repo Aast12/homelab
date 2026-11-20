@@ -407,22 +407,74 @@ class Handler(BaseHTTPRequestHandler):
         if not 0 < size <= 25 * 1024 * 1024:
             return self.send(413, "send one PDF of at most 25 MB")
         body = self.rfile.read(size)
+        named = urllib.request.unquote(self.headers.get("X-Filename", ""))
+        st = None
         try:
             pdf, filename = pdf_from_request(self.headers.get("Content-Type", ""), body)
-            if self.headers.get("X-Filename"):
-                filename = urllib.request.unquote(self.headers["X-Filename"])
+        except StatementError as e:   # kept as uploaded, to see what was sent
+            return self.finish_upload(body, named, None, 422, f"Not imported: {e}")
+        filename = named or filename
+        try:
             st = parse(pdf_text(pdf))
             if "dry_run" in self.path:
-                return self.send(200, render(st, None))
+                return self.finish_upload(pdf, filename, st, 200, render(st, None))
             result = import_statement(st, pdf, filename, Sure(os.environ["SURE_URL"], os.environ["SURE_API_KEY"]), {
                 "debit": os.environ.get("SURE_DEBIT_ACCOUNT", "Nu Débito"),
                 "credit": os.environ.get("SURE_CREDIT_ACCOUNT", "Nu Crédito")})
-            self.send(200, render(st, result))
+            self.finish_upload(pdf, filename, st, 200, render(st, result))
         except StatementError as e:
-            self.send(422, f"Not imported: {e}")
+            self.finish_upload(pdf, filename, st, 422, f"Not imported: {e}")
         except Exception as e:  # noqa: BLE001 - reported to the person uploading
-            self.log_error("import failed: %r", e)
-            self.send(502, f"Not imported: {e}")
+            self.finish_upload(pdf, filename, st, 502, f"Not imported: {e}")
+
+    def finish_upload(self, data: bytes, filename: str, st: "Statement | None",
+                      status: int, message: str) -> None:
+        sha = keep_upload(data, filename, st, status, message)
+        what = f"{st.kind} {st.account_ref} {st.period_start}..{st.period_end}" if st else "unparsed"
+        self.log_message("upload %s %r (%s): %d %s", sha, filename, what, status,
+                         " | ".join(message.strip().splitlines()))
+        self.send(status, message)
+
+
+def keep_upload(data: bytes, filename: str, st: "Statement | None", status: int, message: str) -> str:
+    """Store every upload, imported or not, with the outcome of each attempt.
+
+    STATEMENTS_DIR/<sha256[:16]>.pdf holds the file (.bin if it is not a PDF);
+    the .json next to it lists every attempt. Sending the same file again adds
+    an attempt, not a copy.
+    """
+    sha = hashlib.sha256(data).hexdigest()[:16]
+    folder = os.environ.get("STATEMENTS_DIR", "/statements")
+    try:
+        os.makedirs(folder, exist_ok=True)
+        base = os.path.join(folder, sha)
+        ext = ".pdf" if data.startswith(b"%PDF") else ".bin"
+        if not os.path.exists(base + ext):
+            with open(base + ext, "wb") as f:
+                f.write(data)
+        record = {}
+        if os.path.exists(base + ".json"):
+            with open(base + ".json") as f:
+                record = json.load(f)
+        attempts = record.get("attempts", [])
+        attempts.append({
+            "at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "status": status,
+            "message": message.strip(),
+        })
+        with open(base + ".json", "w") as f:
+            json.dump({
+                "filename": filename or record.get("filename", ""),
+                # a later attempt that fails before parsing keeps what an earlier one read
+                "statement": record.get("statement") if st is None else {
+                    "kind": st.kind, "account": st.account_ref,
+                    "period": [str(st.period_start), str(st.period_end)],
+                    "balance": str(st.balance), "movements": len(st.transactions)},
+                "attempts": attempts,
+            }, f, ensure_ascii=False, indent=2)
+    except OSError as e:          # storage trouble must not hide the import result
+        print(f"could not keep upload {sha}: {e}", file=sys.stderr)
+    return sha
 
 
 def render(st: Statement, result: dict | None) -> str:
