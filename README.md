@@ -45,7 +45,7 @@ A machine's role and whether it holds media are separate:
 - **Media:** `--media` marks any machine, control-plane or worker, that holds the media library at
   `/data/media`.
 
-Each step runs once per machine; machines already in the cluster don't need it again.
+Steps 2 and 3 run once per machine; machines already in the cluster don't need them again.
 
 1. Give every machine a stable address and fill in `k8s/cluster.env`:
 
