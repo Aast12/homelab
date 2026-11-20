@@ -14,6 +14,7 @@ done
 
 data=$(get DATA_DIR)
 sudo mkdir -p "$data/traefik/letsencrypt" "$data/homeassistant"
+docker compose build --pull   # images built here start from the newest base image
 docker compose up -d
 
 # Away from home, the domain resolves through public DNS to the Pi's NetBird

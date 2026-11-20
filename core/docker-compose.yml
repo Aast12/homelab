@@ -105,7 +105,16 @@ services:
       - "traefik.http.routers.glance.entrypoints=websecure"
   homeassistant:
     container_name: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:latest"
+    # Home Assistant with python-kasa replaced by the fix for KLAP bulbs that drop
+    # off after commands (python-kasa#1837, fix in #1852). The fix still reports
+    # version 0.12.0, so the built-in TP-Link integration accepts it. Back to the
+    # plain image once a release includes the fix (homelab#8).
+    image: homelab/home-assistant
+    build:
+      dockerfile_inline: |
+        FROM ghcr.io/home-assistant/home-assistant:latest
+        RUN pip install --no-cache-dir --no-deps --force-reinstall \
+          "python-kasa @ https://github.com/ZeliardM/python-kasa/archive/e3594810c77ac45337188f8926d909c0cf74253f.zip"
     volumes:
       - ./homeassistant:/config
       - ${DATA_DIR}/homeassistant:/config/db_storage
