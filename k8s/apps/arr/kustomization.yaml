@@ -9,9 +9,16 @@ resources:
   - bazarr.yaml
   - jellyseerr.yaml
   - downloads.yaml
+  - setup.yaml
+# Names get a hash of their content, so changing secrets.env or the scripts
+# restarts the apps that use them and re-runs the setup Job.
 secretGenerator:
-  - name: vpn
+  - name: arr
     namespace: media
     envs: [secrets.env]
-generatorOptions:
-  disableNameSuffixHash: true
+configMapGenerator:
+  - name: media-setup
+    namespace: media
+    files:
+      - setup/setup.py
+      - setup/download_logins.py

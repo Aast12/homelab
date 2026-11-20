@@ -1,0 +1,69 @@
+# Sets every media app's login and wires the apps together (setup/setup.py).
+# `lab.sh apply` runs it; it waits for the apps, changes only what differs,
+# and is deleted a minute after it finishes, so the next apply runs it again.
+# A change to secrets.env or to the script renames the Secret or ConfigMap
+# it uses, so that apply also restarts the apps with the new values.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: media-setup
+  namespace: media
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 4
+  activeDeadlineSeconds: 3600
+  template:
+    spec:
+      serviceAccountName: media-setup
+      restartPolicy: Never
+      containers:
+        - name: setup
+          image: python:3.13-alpine
+          command: [python, /setup/setup.py]
+          envFrom:
+            - secretRef: { name: arr }
+          volumeMounts:
+            - { name: setup, mountPath: /setup }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+      volumes:
+        - name: setup
+          configMap: { name: media-setup }
+---
+# The Job keeps the Jellyfin API key it creates in the Secret jellyfin-api-key,
+# so it can reset Jellyfin's admin password when ADMIN_PASSWORD changes. This
+# is all it may touch in the cluster.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: media-setup
+  namespace: media
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: media-setup
+  namespace: media
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [jellyfin-api-key]
+    verbs: [get, update]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [create]          # Kubernetes can't limit create to one name
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: media-setup
+  namespace: media
+subjects:
+  - kind: ServiceAccount
+    name: media-setup
+    namespace: media
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: media-setup

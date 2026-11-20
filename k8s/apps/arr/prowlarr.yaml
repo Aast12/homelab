@@ -37,6 +37,9 @@ spec:
             - { name: PUID, value: "1000" }
             - { name: PGID, value: "1000" }
             - { name: TZ, value: America/Mexico_City }
+            # fixed API key from secrets.env, so the setup Job can wire the apps
+            - name: PROWLARR__AUTH__APIKEY
+              valueFrom: { secretKeyRef: { name: arr, key: PROWLARR_API_KEY } }
           ports:
             - name: http
               containerPort: 9696
