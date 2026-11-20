@@ -6,7 +6,7 @@
 #       Install k3s on a machine (or update it). `server` is the control-plane
 #       node, the machine at K3S_SERVER; `agent` is a worker node, every other
 #       machine. --media marks the node as one that holds the media library at
-#       /data/media.
+#       /data.
 #   lab.sh apply [--strict] [app ...]
 #       Apply namespaces, infrastructure and the apps in k8s/apps (all of them,
 #       or the ones named). Anything whose secrets.env is missing or incomplete
@@ -58,7 +58,7 @@ cmd_node() {
   local check="if [ -f /etc/systemd/system/$other_unit.service ]; then echo 'lab.sh: this machine is already $other_kind; \`node $type\` is for the other machines' >&2; exit 3; fi; "
 
   local prep="" post=""
-  $media && prep="sudo mkdir -p /data/media && "
+  $media && prep="sudo mkdir -p /data && "
   # hand the admin kubeconfig to the SSH user, so it can be fetched without sudo
   [[ $type == server ]] && post=" && sudo install -m 600 -o \$(id -un) /etc/rancher/k3s/k3s.yaml ~/.k3s-kubeconfig"
   ssh -t "$target" "${check}${prep}curl -sfL https://get.k3s.io | sudo INSTALL_K3S_VERSION='$K3S_VERSION' K3S_TOKEN='$K3S_TOKEN' sh -s - ${args[*]}${post}"

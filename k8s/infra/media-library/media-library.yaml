@@ -1,6 +1,11 @@
-# The media library: files already on disk at /data/media on the media nodes
-# (`lab.sh node ... --media` labels a node and creates the folder). Jellyfin
-# and the arr stack mount this one claim.
+# The media library: the folder /data on the media nodes (`lab.sh node ...
+# --media` labels a node and creates it). Every media app mounts it at /data,
+# so a path is the same on the node and in every app:
+#   /data/media/{movies,tv,music}      the library Jellyfin shows
+#   /data/torrents/{movies,tv,music}   qBittorrent's downloads
+#   /data/usenet/...                   nzbget's downloads
+# One volume for downloads and library lets the arr apps move a finished
+# download into the library as a hardlink instead of a copy.
 #
 # A pod sees the disk of the node it runs on. With one media node that is the
 # whole story; a second media node needs the same files at the same path (a
@@ -16,7 +21,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain     # never delete the files with the claim
   storageClassName: manual-local
   local:
-    path: /data/media
+    path: /data
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -37,3 +42,40 @@ spec:
   resources:
     requests:
       storage: 500Gi
+---
+# Creates the folder layout above; safe to re-run. It is deleted a minute
+# after it finishes, so the next `lab.sh apply` runs it again.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: media-folders
+  namespace: media
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mkdir
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              for kind in movies tv music; do
+                mkdir -p /data/media/$kind /data/torrents/$kind
+              done
+              mkdir -p /data/usenet/completed /data/usenet/intermediate
+              chown 1000:1000 /data/media /data/torrents /data/usenet \
+                /data/media/* /data/torrents/* /data/usenet/*
+              ls -ln /data /data/media /data/torrents /data/usenet
+          volumeMounts:
+            - { name: media, mountPath: /data }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits:   { memory: 64Mi }
+      volumes:
+        - name: media
+          persistentVolumeClaim: { claimName: media-library }

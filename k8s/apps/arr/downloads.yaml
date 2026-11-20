@@ -47,6 +47,20 @@ spec:
       nodeSelector:
         lab.alamst.me/media: "true"
       initContainers:
+        # Writes ADMIN_USER/ADMIN_PASSWORD into qBittorrent's and nzbget's
+        # config before they start (setup/download_logins.py).
+        - name: logins
+          image: python:3.13-alpine
+          command: [python, /setup/download_logins.py]
+          envFrom:
+            - secretRef: { name: arr }
+          volumeMounts:
+            - { name: setup,              mountPath: /setup }
+            - { name: qbittorrent-config, mountPath: /qbittorrent }
+            - { name: nzbget-config,      mountPath: /nzbget }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { memory: 128Mi }
         # A native sidecar (restartPolicy: Always): it starts first, and the
         # downloaders start only once its startupProbe says the VPN is up.
         - name: gluetun
@@ -56,10 +70,17 @@ spec:
             # shortcut for creating the tunnel and its firewall, as with
             # Jellyfin's GPU
             privileged: true
-          envFrom:
-            - secretRef: { name: vpn }      # provider and keys, see secrets.env.example
           env:
             - { name: TZ, value: America/Mexico_City }
+            # Proton over WireGuard, on servers that forward a port
+            - { name: VPN_SERVICE_PROVIDER, value: protonvpn }
+            - { name: VPN_TYPE, value: wireguard }
+            - { name: VPN_PORT_FORWARDING, value: "on" }
+            - { name: PORT_FORWARD_ONLY, value: "on" }
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: arr, key: WIREGUARD_PRIVATE_KEY } }
+            - name: SERVER_COUNTRIES
+              valueFrom: { secretKeyRef: { name: arr, key: SERVER_COUNTRIES, optional: true } }
             # let the cluster reach the web UIs through the firewall
             - { name: FIREWALL_INPUT_PORTS, value: "8080,6789" }
             # k3s Pod (10.42/16) and Service (10.43/16) networks bypass the
@@ -135,6 +156,8 @@ spec:
             requests: { cpu: 100m, memory: 128Mi }
             limits:   { memory: 1Gi }
       volumes:
+        - name: setup
+          configMap: { name: media-setup }
         - name: gluetun
           emptyDir: {}                      # server list and forwarded-port file
         - name: qbittorrent-config
