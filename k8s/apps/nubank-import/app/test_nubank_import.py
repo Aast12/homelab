@@ -118,6 +118,24 @@ class Credit(unittest.TestCase):
             ni.parse(CREDIT.replace("+$200.00", "+$205.00"))
 
 
+class KeepUploads(unittest.TestCase):
+    def test_every_upload_is_kept_once_with_each_attempt(self):
+        import json, os, tempfile
+        with tempfile.TemporaryDirectory() as d:
+            os.environ["STATEMENTS_DIR"] = d
+            st = ni.parse(DEBIT)
+            sha = ni.keep_upload(b"%PDF-1.7 a", "oct.pdf", st, 200, "ok")
+            self.assertEqual(ni.keep_upload(b"%PDF-1.7 a", "oct.pdf", None, 422, "Not imported: x"), sha)
+            ni.keep_upload(b"hello", "", None, 422, "Not imported: not a PDF")
+            files = sorted(os.listdir(d))
+            self.assertEqual(len(files), 4)                       # two uploads, each file + json
+            self.assertTrue(any(f.endswith(".bin") for f in files))
+            with open(os.path.join(d, sha + ".json")) as f:
+                rec = json.load(f)
+            self.assertEqual([a["status"] for a in rec["attempts"]], [200, 422])
+            self.assertEqual(rec["statement"]["period"], ["2026-09-01", "2026-09-30"])
+
+
 class Upload(unittest.TestCase):
     def test_raw_pdf_and_multipart(self):
         pdf = b"%PDF-1.7 test"

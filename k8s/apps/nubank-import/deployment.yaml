@@ -10,6 +10,8 @@ metadata:
     app.kubernetes.io/name: nubank-import
 spec:
   replicas: 1
+  strategy:
+    type: Recreate            # the statements volume can be mounted by one pod at a time
   selector:
     matchLabels:
       app.kubernetes.io/name: nubank-import
@@ -22,6 +24,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
+        fsGroup: 10001
         seccompProfile: { type: RuntimeDefault }
       initContainers:
         # the one dependency (pypdf), pinned by hash, into a shared folder
@@ -50,6 +53,8 @@ spec:
             # the Sure accounts the statements go to; create them in Sure first
             - { name: SURE_DEBIT_ACCOUNT, value: "Nu Débito" }
             - { name: SURE_CREDIT_ACCOUNT, value: "Nu Crédito" }
+            # every upload, imported or refused, with the result of each attempt
+            - { name: STATEMENTS_DIR, value: /statements }
           envFrom:
             - secretRef: { name: nubank-import }    # see secrets.env.example
           ports:
@@ -68,6 +73,7 @@ spec:
             - { name: app, mountPath: /app, readOnly: true }
             - { name: deps, mountPath: /deps, readOnly: true }
             - { name: tmp, mountPath: /tmp }
+            - { name: statements, mountPath: /statements }
       volumes:
         - name: app
           configMap: { name: nubank-import-app }
@@ -75,6 +81,20 @@ spec:
           emptyDir: {}
         - name: tmp
           emptyDir: {}
+        - name: statements
+          persistentVolumeClaim: { claimName: nubank-statements }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nubank-statements
+  namespace: finance
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

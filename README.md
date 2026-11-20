@@ -119,6 +119,7 @@ appear as one charge per instalment, and the card's balance includes what's stil
 | Pi, `$DATA_DIR/homeassistant` | Home Assistant's database |
 | Pi, `core/homeassistant`, `core/glance` | Home Assistant and Glance settings, in the repo |
 | Media nodes, `/data/media` | The media library |
+| Cluster volume `nubank-statements` | Every Nubank statement uploaded, imported or refused, with the result of each attempt |
 | Cluster volumes | Each app's settings. `kubectl get pv` lists them; k3s keeps them under `/var/lib/rancher/k3s/storage` on the node that runs the app |
 
 ## Add an app
