@@ -3,9 +3,10 @@
 # k8s/cluster.env, reaches nodes over SSH and the cluster with kubectl.
 #
 #   lab.sh node <server|agent> [--media] <ssh-target>
-#       Install k3s on a machine (or update it). `server` starts the cluster,
-#       `agent` joins it. --media marks the node as one that holds the media
-#       library at /data/media.
+#       Install k3s on a machine (or update it). `server` is the control-plane
+#       node, the machine at K3S_SERVER; `agent` is a worker node, every other
+#       machine. --media marks the node as one that holds the media library at
+#       /data/media.
 #   lab.sh apply [--strict] [app ...]
 #       Apply namespaces, infrastructure and the apps in k8s/apps (all of them,
 #       or the ones named). Anything whose secrets.env is missing or incomplete
@@ -49,11 +50,18 @@ cmd_node() {
   fi
   $media && args+=(--node-label "$media_label=true")
 
+  # k3s runs as the control-plane service (k3s.service) or the worker service
+  # (k3s-agent.service) on a machine, not both: refuse before installing the
+  # other one. --media is separate and fits either.
+  local other_unit=k3s-agent other_kind="a worker node"
+  [[ $type == agent ]] && other_unit=k3s other_kind="the control-plane node"
+  local check="if [ -f /etc/systemd/system/$other_unit.service ]; then echo 'lab.sh: this machine is already $other_kind; \`node $type\` is for the other machines' >&2; exit 3; fi; "
+
   local prep="" post=""
   $media && prep="sudo mkdir -p /data/media && "
   # hand the admin kubeconfig to the SSH user, so it can be fetched without sudo
   [[ $type == server ]] && post=" && sudo install -m 600 -o \$(id -un) /etc/rancher/k3s/k3s.yaml ~/.k3s-kubeconfig"
-  ssh -t "$target" "${prep}curl -sfL https://get.k3s.io | sudo INSTALL_K3S_VERSION='$K3S_VERSION' K3S_TOKEN='$K3S_TOKEN' sh -s - ${args[*]}${post}"
+  ssh -t "$target" "${check}${prep}curl -sfL https://get.k3s.io | sudo INSTALL_K3S_VERSION='$K3S_VERSION' K3S_TOKEN='$K3S_TOKEN' sh -s - ${args[*]}${post}"
 
   if [[ $type == server && ! -f $here/kubeconfig ]]; then
     ssh "$target" 'cat ~/.k3s-kubeconfig' \

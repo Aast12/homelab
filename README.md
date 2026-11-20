@@ -38,15 +38,33 @@ with the network you are on; at home Blocky answers with the Pi's home address. 
 
 ## Set up the cluster
 
-Give every node a stable address, fill in `k8s/cluster.env`, then install k3s on each machine
-over SSH. Start with the server; add `--media` to every node that holds the media library:
+A machine's role and whether it holds media are separate:
 
-```bash
-cp k8s/cluster.env.example k8s/cluster.env && $EDITOR k8s/cluster.env
-k8s/lab.sh node server --media <user@server>
-export KUBECONFIG=$PWD/k8s/kubeconfig
-k8s/lab.sh node agent <user@node>
-```
+- **Role:** one machine is the **control-plane node** (k3s calls it the *server*), the one at
+  `K3S_SERVER` in `k8s/cluster.env`. Every other machine is a **worker node** (k3s: *agent*).
+- **Media:** `--media` marks any machine, control-plane or worker, that holds the media library at
+  `/data/media`.
+
+Steps 2 and 3 run once per machine; machines already in the cluster don't need them again.
+
+1. Give every machine a stable address and fill in `k8s/cluster.env`:
+
+   ```bash
+   cp k8s/cluster.env.example k8s/cluster.env && $EDITOR k8s/cluster.env
+   ```
+
+2. Install k3s on the control-plane node. Add `--media` if it holds the media library:
+
+   ```bash
+   k8s/lab.sh node server [--media] <user@control-plane-node>
+   export KUBECONFIG=$PWD/k8s/kubeconfig
+   ```
+
+3. Install k3s on each worker node, with `--media` on the ones that hold the media library:
+
+   ```bash
+   k8s/lab.sh node agent [--media] <user@worker-node>
+   ```
 
 Fill in the `secrets.env` of every folder you want running (copy its `secrets.env.example`; the
 comments say where each value comes from), then deploy:
