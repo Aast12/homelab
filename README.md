@@ -86,6 +86,30 @@ k8s/lab.sh apply --strict     # everything, or stop if anything is not configure
 | `k8s/apps/audiobookshelf` | Audiobookshelf | `media` | no |
 | `k8s/apps/arr` | Jellyseerr, Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, FlareSolverr, qBittorrent and nzbget behind a VPN | `media` | Proton VPN keys |
 | `k8s/apps/sure` | Sure, with nightly database dumps | `finance` | app secrets |
+| `k8s/apps/nubank-import` | Imports Nubank statement PDFs into Sure | `finance` | Sure API key, upload token |
+
+## Import Nubank statements
+
+Send a statement PDF from the Nubank app and its transactions and balance land in Sure. It reads
+both the Cuenta Nu (debit) and the credit card statements. Sending the same PDF again changes
+nothing, and a PDF whose numbers don't match its own summary is refused.
+
+1. In Sure, create two accounts named exactly **Nu Débito** (a cash account) and **Nu Crédito**
+   (a credit card), and an API key with read and write access (Settings → API key).
+2. Fill in `k8s/apps/nubank-import/secrets.env` and run `k8s/lab.sh apply nubank-import`.
+3. On the iPhone, make a Shortcut named **Enviar a Sure**:
+   - Shortcut details: turn on **Show in Share Sheet**, receiving **PDFs**.
+   - **Get Contents of URL**: `https://nubank.lab.alamst.me/import`, method **POST**, header
+     `X-Token` set to the `UPLOAD_TOKEN`, request body **File**: *Shortcut Input*.
+   - **Show Result**: *Contents of URL*.
+
+Then, in the Nubank app, open a statement, tap Share and choose **Enviar a Sure**. The phone needs
+NetBird on when you're away from home. Without the Shortcut, upload the PDF at
+`https://nubank.lab.alamst.me`.
+
+The debit account in Sure holds the whole statement balance (account, cajitas and secured-credit
+cajita); moves between the account and the cajitas are left out. Credit card MSI purchases
+appear as one charge per instalment, and the card's balance includes what's still pending.
 
 ## Where the data lives
 
