@@ -50,8 +50,9 @@ cmd_node() {
   fi
   $media && args+=(--node-label "$media_label=true")
 
-  # A machine is either the server or an agent, never both: refuse before
-  # installing the second kind next to the first.
+  # k3s runs as the control-plane service (k3s.service) or the worker service
+  # (k3s-agent.service) on a machine, not both: refuse before installing the
+  # other one. --media is separate and fits either.
   local other_unit=k3s-agent other_kind="a worker node"
   [[ $type == agent ]] && other_unit=k3s other_kind="the control-plane node"
   local check="if [ -f /etc/systemd/system/$other_unit.service ]; then echo 'lab.sh: this machine is already $other_kind; \`node $type\` is for the other machines' >&2; exit 3; fi; "
