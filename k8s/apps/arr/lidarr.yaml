@@ -1,5 +1,4 @@
-# Reads and writes the media library at /data, the same path as the old
-# Compose stack, so paths saved in its settings stay valid.
+# Reads and writes the media library at /data (see k8s/infra/media-library).
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -40,6 +39,9 @@ spec:
             - { name: PUID, value: "1000" }
             - { name: PGID, value: "1000" }
             - { name: TZ, value: America/Mexico_City }
+            # fixed API key from secrets.env, so the setup Job can wire the apps
+            - name: LIDARR__AUTH__APIKEY
+              valueFrom: { secretKeyRef: { name: arr, key: LIDARR_API_KEY } }
           ports:
             - name: http
               containerPort: 8686
