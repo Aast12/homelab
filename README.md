@@ -5,7 +5,7 @@ Two kinds of machine serve everything under one domain (`lab.alamst.me`):
 - **A Raspberry Pi** (`core/`, Docker Compose): DNS (Blocky), the front proxy (Traefik), the
   dashboard (Glance) and Home Assistant.
 - **A k3s cluster** (`k8s/`): every other app. Some nodes are **media nodes**: they hold the media
-  library at `/data/media`, and only they run the apps that need it.
+  library at `/data`, and only they run the apps that need it.
 
 Blocky answers the domain and every name under it with the Pi's address. The Pi's Traefik serves
 its own apps and forwards every other name to the cluster's floating address, which kube-vip
@@ -43,7 +43,7 @@ A machine's role and whether it holds media are separate:
 - **Role:** one machine is the **control-plane node** (k3s calls it the *server*), the one at
   `K3S_SERVER` in `k8s/cluster.env`. Every other machine is a **worker node** (k3s: *agent*).
 - **Media:** `--media` marks any machine, control-plane or worker, that holds the media library at
-  `/data/media`.
+  `/data`.
 
 Steps 2 and 3 run once per machine; machines already in the cluster don't need them again.
 
@@ -84,7 +84,7 @@ k8s/lab.sh apply --strict     # everything, or stop if anything is not configure
 | `k8s/infra/media-library` | The library on the media nodes | `media` | no |
 | `k8s/apps/jellyfin` | Jellyfin | `media` | no |
 | `k8s/apps/audiobookshelf` | Audiobookshelf | `media` | no |
-| `k8s/apps/arr` | Jellyseerr, Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, FlareSolverr, qBittorrent and nzbget behind a VPN | `media` | Proton VPN keys |
+| `k8s/apps/arr` | Jellyseerr, Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, FlareSolverr, qBittorrent and nzbget behind a VPN, and the Job that wires them | `media` | one login, API keys, Proton VPN key |
 | `k8s/apps/sure` | Sure, with nightly database dumps | `finance` | app secrets |
 | `k8s/apps/nubank-import` | Imports Nubank statement PDFs into Sure | `finance` | Sure API key, upload token |
 
@@ -111,6 +111,29 @@ The debit account in Sure holds the whole statement balance (account, cajitas an
 cajita); moves between the account and the cajitas are left out. Credit card MSI purchases
 appear as one charge per instalment, and the card's balance includes what's still pending.
 
+### The media apps
+
+Every media app gets the same login, and the setup Job connects them: download clients and
+library folders in Sonarr, Radarr and Lidarr; Prowlarr to all three and to FlareSolverr; Bazarr to
+Sonarr and Radarr; Jellyfin's libraries; Jellyseerr to Jellyfin, Sonarr and Radarr. It runs on
+every `lab.sh apply arr` and changes only what differs.
+
+1. Make the VPN key. In your Proton account, open Downloads → WireGuard configuration, pick
+   GNU/Linux, turn on **NAT-PMP (Port Forwarding)**, choose a server marked P2P, and create it.
+   Copy the `PrivateKey` value; Proton shows it only once.
+2. Fill in `k8s/apps/arr/secrets.env` from its example: the login, five API keys (the example
+   has the command that makes them) and the VPN key. Subtitle and Usenet accounts are optional.
+3. Deploy Jellyfin too, since Jellyseerr signs in through it:
+   `k8s/lab.sh apply jellyfin arr`. Follow the setup with
+   `kubectl -n media logs -f job/media-setup`; it ends with `done: N change(s)`.
+
+What stays in the apps' own screens: indexers in Prowlarr (Indexers → Add; it pushes them to
+the others), quality profiles, and anything you want beyond the defaults.
+
+To change the login, edit `secrets.env` and run `k8s/lab.sh apply arr` again: the apps restart
+with it and the Job updates every app, Jellyfin included. A password changed inside an app is
+put back on the next run.
+
 ## Where the data lives
 
 | Where | What |
@@ -118,7 +141,7 @@ appear as one charge per instalment, and the card's balance includes what's stil
 | Pi, `$DATA_DIR/traefik/letsencrypt` | The Pi's certificates |
 | Pi, `$DATA_DIR/homeassistant` | Home Assistant's database |
 | Pi, `core/homeassistant`, `core/glance` | Home Assistant and Glance settings, in the repo |
-| Media nodes, `/data/media` | The media library |
+| Media nodes, `/data` | The media library in `/data/media`, downloads in `/data/torrents` and `/data/usenet`; the same paths inside every media app |
 | Cluster volume `nubank-statements` | Every Nubank statement uploaded, imported or refused, with the result of each attempt |
 | Cluster volumes | Each app's settings. `kubectl get pv` lists them; k3s keeps them under `/var/lib/rancher/k3s/storage` on the node that runs the app |
 
@@ -134,7 +157,7 @@ appear as one charge per instalment, and the card's balance includes what's stil
 ## Add a media node
 
 Run `k8s/lab.sh node agent --media <user@node>`. A pod only sees the disk of the node it runs on,
-so the new node needs the same library at `/data/media`, from a shared disk or a NAS mounted
+so the new node needs the same library at `/data`, from a shared disk or a NAS mounted
 there.
 
 ## Moving from the old Compose stack
