@@ -87,6 +87,7 @@ k8s/lab.sh apply --strict     # everything, or stop if anything is not configure
 | `k8s/apps/arr` | Jellyseerr, Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, FlareSolverr, qBittorrent and nzbget behind a VPN | `media` | Proton VPN keys |
 | `k8s/apps/sure` | Sure, with nightly database dumps | `finance` | app secrets |
 | `k8s/apps/nubank-import` | Imports Nubank statement PDFs into Sure | `finance` | Sure API key, upload token |
+| `k8s/apps/syncfy-bridge` | Feeds the American Express card from Syncfy to Sure | `finance` | Syncfy API key and user, bridge token |
 
 ## Import Nubank statements
 
@@ -111,6 +112,29 @@ The debit account in Sure holds the whole statement balance (account, cajitas an
 cajita); moves between the account and the cajitas are left out. Credit card MSI purchases
 appear as one charge per instalment, and the card's balance includes what's still pending.
 
+## Sync American Express
+
+Sure reads the Amex card through its built-in SimpleFIN connection, from a small bridge to
+Syncfy in the cluster. Syncfy logs in to Amex with the password it saved when the card was
+connected. It syncs only when Sure does (the first visit of the day, or the Sync button), and at
+most once every 24 hours (`MIN_SYNC_HOURS` in `deployment.yaml`). Syncfy usually holds about 60
+days of history.
+
+It needs a Syncfy user with the card connected and its password saved. Connecting a bank isn't
+in this repo yet ([#16](https://github.com/Aast12/homelab/issues/16)).
+
+1. Fill in `k8s/apps/syncfy-bridge/secrets.env` and run `k8s/lab.sh apply syncfy-bridge`.
+2. Print the setup token:
+   ```bash
+   kubectl -n finance exec deploy/syncfy-bridge -- python /app/syncfy_bridge.py setup-token
+   ```
+3. In Sure, go to Settings → Bank sync → SimpleFIN and paste the token. Sure lists the card; set
+   it up as a **Credit Card**, or link it to an existing card account.
+
+If Syncfy can't log in, Sure's sync summary shows why and the card keeps its last data. To see
+what Sure receives, without syncing:
+`kubectl -n finance exec deploy/syncfy-bridge -- python /app/syncfy_bridge.py check`.
+
 ## Where the data lives
 
 | Where | What |
@@ -120,6 +144,7 @@ appear as one charge per instalment, and the card's balance includes what's stil
 | Pi, `core/homeassistant`, `core/glance` | Home Assistant and Glance settings, in the repo |
 | Media nodes, `/data/media` | The media library |
 | Cluster volume `nubank-statements` | Every Nubank statement uploaded, imported or refused, with the result of each attempt |
+| Syncfy, outside the homelab | The Amex login and password, and the card's balance and transactions |
 | Cluster volumes | Each app's settings. `kubectl get pv` lists them; k3s keeps them under `/var/lib/rancher/k3s/storage` on the node that runs the app |
 
 ## Add an app
