@@ -43,15 +43,17 @@ spec:
     requests:
       storage: 500Gi
 ---
-# Creates the folder layout above; safe to re-run. It is deleted a minute
-# after it finishes, so the next `lab.sh apply` runs it again.
+# Creates the folder layout above; safe to re-run, and `lab.sh apply` runs it
+# on every apply.
 apiVersion: batch/v1
 kind: Job
 metadata:
+  labels:
+    lab.alamst.me/run-on-apply: "true"
   name: media-folders
   namespace: media
 spec:
-  ttlSecondsAfterFinished: 60
+  ttlSecondsAfterFinished: 86400
   backoffLimit: 3
   template:
     spec:
