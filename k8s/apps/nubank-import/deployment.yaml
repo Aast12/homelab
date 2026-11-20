@@ -1,0 +1,111 @@
+# Receives a Nubank statement PDF (iPhone Share Sheet or the upload page at
+# nubank.lab.alamst.me), reads it, and writes its transactions and balance to
+# Sure through Sure's API. The code is app/nubank_import.py.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nubank-import
+  namespace: finance
+  labels:
+    app.kubernetes.io/name: nubank-import
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nubank-import
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nubank-import
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        # the one dependency (pypdf), pinned by hash, into a shared folder
+        - name: deps
+          image: python:3.13.17-slim
+          command: [pip, install, --no-cache-dir, --no-deps, --require-hashes,
+                    --target, /deps, -r, /app/requirements.txt]
+          env:
+            - { name: HOME, value: /tmp }
+          volumeMounts:
+            - { name: app, mountPath: /app }
+            - { name: deps, mountPath: /deps }
+            - { name: tmp, mountPath: /tmp }
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      containers:
+        - name: nubank-import
+          image: python:3.13.17-slim
+          command: [python, /app/nubank_import.py, serve]
+          env:
+            - { name: PYTHONPATH, value: /deps }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: SURE_URL, value: http://sure-web.finance.svc.cluster.local }
+            # the Sure accounts the statements go to; create them in Sure first
+            - { name: SURE_DEBIT_ACCOUNT, value: "Nu Débito" }
+            - { name: SURE_CREDIT_ACCOUNT, value: "Nu Crédito" }
+          envFrom:
+            - secretRef: { name: nubank-import }    # see secrets.env.example
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 10m, memory: 64Mi }
+            limits:   { memory: 256Mi }
+          securityContext: *locked
+          volumeMounts:
+            - { name: app, mountPath: /app, readOnly: true }
+            - { name: deps, mountPath: /deps, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: app
+          configMap: { name: nubank-import-app }
+        - name: deps
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nubank-import
+  namespace: finance
+spec:
+  selector:
+    app.kubernetes.io/name: nubank-import
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nubank-import
+  namespace: finance
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [nubank.lab.alamst.me]
+  rules:
+    - host: nubank.lab.alamst.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nubank-import
+                port:
+                  name: http
