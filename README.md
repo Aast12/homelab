@@ -38,21 +38,33 @@ with the network you are on; at home Blocky answers with the Pi's home address. 
 
 ## Set up the cluster
 
-Every machine in the cluster is either the **control-plane node** (k3s calls it the *server*): it
-runs the Kubernetes API, scheduler and database, and its address is `K3S_SERVER` in
-`k8s/cluster.env`; or a **worker node** (k3s: *agent*), which only runs apps. Run `lab.sh node`
-once per machine, `server` on the control-plane node and `agent` on each worker, and add `--media`
-on the machines that hold the media library at `/data/media`. Machines already in the cluster
-don't need it again; re-running it only updates k3s on that machine.
+A machine's role and whether it holds media are separate:
 
-Give every node a stable address and fill in `k8s/cluster.env`, then:
+- **Role:** one machine is the **control-plane node** (k3s calls it the *server*), the one at
+  `K3S_SERVER` in `k8s/cluster.env`. Every other machine is a **worker node** (k3s: *agent*).
+- **Media:** `--media` marks any machine, control-plane or worker, that holds the media library at
+  `/data/media`.
 
-```bash
-cp k8s/cluster.env.example k8s/cluster.env && $EDITOR k8s/cluster.env
-k8s/lab.sh node server --media <user@control-plane-node>   # the machine at K3S_SERVER; drop --media if it has no library
-export KUBECONFIG=$PWD/k8s/kubeconfig
-k8s/lab.sh node agent <user@worker-node>                   # once for each worker; add --media where it applies
-```
+Each step runs once per machine; machines already in the cluster don't need it again.
+
+1. Give every machine a stable address and fill in `k8s/cluster.env`:
+
+   ```bash
+   cp k8s/cluster.env.example k8s/cluster.env && $EDITOR k8s/cluster.env
+   ```
+
+2. Install k3s on the control-plane node. Add `--media` if it holds the media library:
+
+   ```bash
+   k8s/lab.sh node server [--media] <user@control-plane-node>
+   export KUBECONFIG=$PWD/k8s/kubeconfig
+   ```
+
+3. Install k3s on each worker node, with `--media` on the ones that hold the media library:
+
+   ```bash
+   k8s/lab.sh node agent [--media] <user@worker-node>
+   ```
 
 Fill in the `secrets.env` of every folder you want running (copy its `secrets.env.example`; the
 comments say where each value comes from), then deploy:
