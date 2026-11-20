@@ -87,7 +87,28 @@ def pdf_text(data: bytes) -> str:
     return "\n".join(p.extract_text(extraction_mode="layout") for p in reader.pages)
 
 
+WRAPPED_YEARS = re.compile(r"^(?P<line>.*)\n[ \t]*(?P<years>\d{4}(?:[ \t]+\d{4})?)[ \t]*$", re.M)
+DATE_NO_YEAR = re.compile(r"\b(\d{2} [A-Z]{3})\b(?! \d{4})")
+
+
+def unwrap_years(text: str) -> str:
+    """Put years that the PDF wrapped onto the next line back after their dates.
+
+    Some statements print "07 AGO" on one line and "2026" alone below it.
+    """
+    def fix(m: re.Match) -> str:
+        years = m.group("years").split()
+        line = m.group("line")
+        if len(DATE_NO_YEAR.findall(line)) < len(years):
+            return m.group(0)
+        for y in years:
+            line = DATE_NO_YEAR.sub(lambda d: f"{d.group(1)} {y}", line, count=1)
+        return line
+    return WRAPPED_YEARS.sub(fix, text)
+
+
 def parse(text: str) -> Statement:
+    text = unwrap_years(text)
     if "Tarjeta de Crédito Nu" in text:
         st = parse_credit(text)
     elif "Cuenta Nu:" in text and "Detalle de movimientos en tu cuenta" in text:
@@ -206,6 +227,11 @@ def parse_credit(text: str) -> Statement:
     txns: list[Txn] = []
     current: Txn | None = None
     holder = ""
+    # When a balance is not paid in full, Nubank moves it on the due date with a
+    # "Saldo revolvente" charge (left out of Total de cargos) and sometimes a
+    # matching "Crédito de saldo revolvente" credit (counted in Total de abonos).
+    # Both are the debt already owed, not spending or payments: skipped.
+    revolving_credits = Decimal(0)
     in_section = False
     for raw in text.splitlines():
         s = " ".join(raw.split())
@@ -229,6 +255,11 @@ def parse_credit(text: str) -> Statement:
             when = op_date if op_date >= begin else charge_date
             name = re.sub(r"\s*\|\s*RFC:.*$", "", " ".join(name.split()))
             value = money(amt)
+            if name in ("Saldo revolvente", "Crédito de saldo revolvente"):
+                if sign == "-":
+                    revolving_credits -= value
+                current = None
+                continue
             current = Txn(when, name, value if sign == "+" else -value, holder, charged=charge_date)
             txns.append(current)
             continue
@@ -245,7 +276,7 @@ def parse_credit(text: str) -> Statement:
     # are still real charges and are imported.
     got_charges = sum((t.amount for t in txns if t.amount > 0 and t.charged <= end), Decimal(0))
     got_credits = sum((t.amount for t in txns if t.amount < 0), Decimal(0))
-    if got_charges != charges or got_credits != credits:
+    if got_charges != charges or got_credits + revolving_credits != credits:
         raise StatementError(
             f"credit statement does not add up: charges {got_charges} vs Total de cargos {charges}, "
             f"credits {got_credits} vs Total de abonos {credits}")
@@ -255,6 +286,7 @@ def parse_credit(text: str) -> Statement:
     return Statement("credit", card, begin, end, regular + msi, txns, {
         "charges = Total de cargos": str(charges),
         "credits = Total de abonos": str(credits),
+        "revolving-balance credit skipped": str(revolving_credits),
         "balance = regular + pending MSI": f"{regular} + {msi}",
     })
 
