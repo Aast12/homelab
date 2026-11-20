@@ -36,6 +36,11 @@ domain and `*.` the domain at the Pi's NetBird address, so they resolve anywhere
 with the network you are on; at home Blocky answers with the Pi's home address. Re-run
 `setup.sh` if the Pi ever gets a new NetBird address.
 
+`core/homeassistant/custom_components/tplink` replaces Home Assistant's TP-Link integration with
+a copy that uses an unreleased python-kasa fix, because the KL110 lamp drops off after commands
+([python-kasa#1837](https://github.com/python-kasa/python-kasa/issues/1837)). Delete the folder
+and restart Home Assistant once a release includes the fix (https://github.com/Aast12/homelab/issues/8).
+
 ## Set up the cluster
 
 Give every node a stable address, fill in `k8s/cluster.env`, then install k3s on each machine
