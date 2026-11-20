@@ -3,10 +3,10 @@
 # k8s/cluster.env, reaches nodes over SSH and the cluster with kubectl.
 #
 #   lab.sh node <server|agent> [--media] <ssh-target>
-#       Install k3s on a machine (or update it). `server` is for the machine at
-#       K3S_SERVER, which runs the cluster; `agent` is for every other machine,
-#       which joins it. --media marks the node as one that holds the media
-#       library at /data/media.
+#       Install k3s on a machine (or update it). `server` is the control-plane
+#       node, the machine at K3S_SERVER; `agent` is a worker node, every other
+#       machine. --media marks the node as one that holds the media library at
+#       /data/media.
 #   lab.sh apply [--strict] [app ...]
 #       Apply namespaces, infrastructure and the apps in k8s/apps (all of them,
 #       or the ones named). Anything whose secrets.env is missing or incomplete
@@ -52,8 +52,8 @@ cmd_node() {
 
   # A machine is either the server or an agent, never both: refuse before
   # installing the second kind next to the first.
-  local other_unit=k3s-agent other_kind="an agent"
-  [[ $type == agent ]] && other_unit=k3s other_kind="the k3s server"
+  local other_unit=k3s-agent other_kind="a worker node"
+  [[ $type == agent ]] && other_unit=k3s other_kind="the control-plane node"
   local check="if [ -f /etc/systemd/system/$other_unit.service ]; then echo 'lab.sh: this machine is already $other_kind; \`node $type\` is for the other machines' >&2; exit 3; fi; "
 
   local prep="" post=""

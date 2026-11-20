@@ -38,19 +38,20 @@ with the network you are on; at home Blocky answers with the Pi's home address. 
 
 ## Set up the cluster
 
-Every machine in the cluster is either the **server**, which runs the cluster's control plane and
-whose address is `K3S_SERVER` in `k8s/cluster.env`, or an **agent**: every other node. Run
-`lab.sh node` once per machine, `server` on the server and `agent` on each of the others, and add
-`--media` on the machines that hold the media library at `/data/media`. Machines already in the
-cluster don't need it again; re-running it only updates k3s on that machine.
+Every machine in the cluster is either the **control-plane node** (k3s calls it the *server*): it
+runs the Kubernetes API, scheduler and database, and its address is `K3S_SERVER` in
+`k8s/cluster.env`; or a **worker node** (k3s: *agent*), which only runs apps. Run `lab.sh node`
+once per machine, `server` on the control-plane node and `agent` on each worker, and add `--media`
+on the machines that hold the media library at `/data/media`. Machines already in the cluster
+don't need it again; re-running it only updates k3s on that machine.
 
 Give every node a stable address and fill in `k8s/cluster.env`, then:
 
 ```bash
 cp k8s/cluster.env.example k8s/cluster.env && $EDITOR k8s/cluster.env
-k8s/lab.sh node server --media <user@server>     # the machine at K3S_SERVER; drop --media if it has no library
+k8s/lab.sh node server --media <user@control-plane-node>   # the machine at K3S_SERVER; drop --media if it has no library
 export KUBECONFIG=$PWD/k8s/kubeconfig
-k8s/lab.sh node agent <user@node>                # once for each other machine; add --media where it applies
+k8s/lab.sh node agent <user@worker-node>                   # once for each worker; add --media where it applies
 ```
 
 Fill in the `secrets.env` of every folder you want running (copy its `secrets.env.example`; the
