@@ -1,0 +1,102 @@
+# Reads and writes the media library at /data (see k8s/infra/media-library).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lidarr-config
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lidarr
+  namespace: media
+  labels:
+    app.kubernetes.io/name: lidarr
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lidarr
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lidarr
+    spec:
+      nodeSelector:
+        lab.alamst.me/media: "true"
+      containers:
+        - name: lidarr
+          image: lscr.io/linuxserver/lidarr:3.1.6
+          env:
+            - { name: PUID, value: "1000" }
+            - { name: PGID, value: "1000" }
+            - { name: TZ, value: America/Mexico_City }
+            # fixed API key from secrets.env, so the setup Job can wire the apps
+            - name: LIDARR__AUTH__APIKEY
+              valueFrom: { secretKeyRef: { name: arr, key: LIDARR_API_KEY } }
+          ports:
+            - name: http
+              containerPort: 8686
+          volumeMounts:
+            - { name: config, mountPath: /config }
+            - { name: media,  mountPath: /data }
+          startupProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /ping, port: http }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 50m, memory: 256Mi }
+            limits:   { memory: 1Gi }
+      volumes:
+        - name: config
+          persistentVolumeClaim: { claimName: lidarr-config }
+        - name: media
+          persistentVolumeClaim: { claimName: media-library }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lidarr
+  namespace: media
+spec:
+  selector:
+    app.kubernetes.io/name: lidarr
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lidarr
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [lidarr.lab.alamst.me]
+  rules:
+    - host: lidarr.lab.alamst.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lidarr
+                port:
+                  name: http

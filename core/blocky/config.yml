@@ -1,0 +1,23 @@
+# core/blocky/config.yml (on the Pi)
+# Blocky reads /app/config as a folder and merges every file in it. This file
+# is the part that does not depend on the home. The local name
+# (customDNS: ${DOMAIN} -> ${PI_IP}) is generated from core/.env by the
+# blocky-home config in docker-compose.yml.
+upstreams:
+  groups:
+    default:
+      - 1.1.1.1
+      - 46.182.19.48
+      - 80.241.218.68
+      - tcp-tls:fdns1.dismail.de:853
+      - https://dns.digitale-gesellschaft.ch/dns-query
+blocking:
+  denylists:
+    ads:
+      - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+  clientGroupsBlock:
+    default:
+      - ads
+ports:
+  dns: 53
+  http: 4000

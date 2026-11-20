@@ -1,0 +1,215 @@
+# qBittorrent and nzbget behind the VPN. All containers in a Pod share one
+# network namespace, so gluetun's tunnel and firewall cover both downloaders:
+# the Kubernetes form of Compose's `network_mode: service:gluetun`.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qbittorrent-config
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nzbget-config
+  namespace: media
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: downloads
+  namespace: media
+  labels:
+    app.kubernetes.io/name: downloads
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: downloads
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: downloads
+    spec:
+      nodeSelector:
+        lab.alamst.me/media: "true"
+      initContainers:
+        # Writes ADMIN_USER/ADMIN_PASSWORD into qBittorrent's and nzbget's
+        # config before they start (setup/download_logins.py).
+        - name: logins
+          image: python:3.13-alpine
+          command: [python, /setup/download_logins.py]
+          envFrom:
+            - secretRef: { name: arr }
+          volumeMounts:
+            - { name: setup,              mountPath: /setup }
+            - { name: qbittorrent-config, mountPath: /qbittorrent }
+            - { name: nzbget-config,      mountPath: /nzbget }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+        # A native sidecar (restartPolicy: Always): it starts first, and the
+        # downloaders start only once its startupProbe says the VPN is up.
+        - name: gluetun
+          image: qmcgaw/gluetun:v3.41.3
+          restartPolicy: Always
+          securityContext:
+            # shortcut for creating the tunnel and its firewall, as with
+            # Jellyfin's GPU
+            privileged: true
+          env:
+            - { name: TZ, value: America/Mexico_City }
+            # Proton over WireGuard, on servers that forward a port
+            - { name: VPN_SERVICE_PROVIDER, value: protonvpn }
+            - { name: VPN_TYPE, value: wireguard }
+            - { name: VPN_PORT_FORWARDING, value: "on" }
+            - { name: PORT_FORWARD_ONLY, value: "on" }
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom: { secretKeyRef: { name: arr, key: WIREGUARD_PRIVATE_KEY } }
+            - name: SERVER_COUNTRIES
+              valueFrom: { secretKeyRef: { name: arr, key: SERVER_COUNTRIES, optional: true } }
+            # let the cluster reach the web UIs through the firewall
+            - { name: FIREWALL_INPUT_PORTS, value: "8080,6789" }
+            # k3s Pod (10.42/16) and Service (10.43/16) networks bypass the
+            # tunnel, so replies to Traefik, the arrs and probes go back out
+            # of the Pod's own interface
+            - { name: FIREWALL_OUTBOUND_SUBNETS, value: "10.42.0.0/15" }
+            # tell qBittorrent the port Proton forwards, whenever it changes
+            - name: VPN_PORT_FORWARDING_UP_COMMAND
+              value: >-
+                /bin/sh -c 'for i in 1 2 3 4 5 6 7 8 9 10 11 12; do wget -q -O- --post-data "json={\"listen_port\":{{PORT}},\"current_network_interface\":\"{{VPN_INTERFACE}}\",\"random_port\":false,\"upnp\":false}" http://127.0.0.1:8080/api/v2/app/setPreferences && exit 0; sleep 5; done; exit 1'
+            - name: VPN_PORT_FORWARDING_DOWN_COMMAND
+              value: >-
+                /bin/sh -c 'wget -q -O- --post-data "json={\"listen_port\":0,\"current_network_interface\":\"lo\"}" http://127.0.0.1:8080/api/v2/app/setPreferences || true'
+          volumeMounts:
+            - { name: gluetun, mountPath: /gluetun }
+          startupProbe:
+            exec: { command: [/gluetun-entrypoint, healthcheck] }
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            exec: { command: [/gluetun-entrypoint, healthcheck] }
+            periodSeconds: 20
+            failureThreshold: 5
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { memory: 256Mi }
+      containers:
+        - name: qbittorrent
+          image: lscr.io/linuxserver/qbittorrent:5.3.0
+          env:
+            - { name: PUID, value: "1000" }
+            - { name: PGID, value: "1000" }
+            - { name: TZ, value: America/Mexico_City }
+            - { name: WEBUI_PORT, value: "8080" }
+          ports:
+            - name: qbittorrent
+              containerPort: 8080
+          volumeMounts:
+            - { name: qbittorrent-config, mountPath: /config }
+            - { name: media,              mountPath: /data }
+          readinessProbe:
+            tcpSocket: { port: qbittorrent }
+            periodSeconds: 10
+          # qBittorrent stalls after the VPN reconnects; restart it when it
+          # cannot reach the internet through the tunnel (deunhealth's old job)
+          livenessProbe:
+            exec: { command: [ping, -c, "1", -W, "5", "1.1.1.1"] }
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { memory: 2Gi }
+        - name: nzbget
+          image: lscr.io/linuxserver/nzbget:v26.3-ls272
+          env:
+            - { name: PUID, value: "1000" }
+            - { name: PGID, value: "1000" }
+            - { name: TZ, value: America/Mexico_City }
+          ports:
+            - name: nzbget
+              containerPort: 6789
+          volumeMounts:
+            - { name: nzbget-config, mountPath: /config }
+            - { name: media,         mountPath: /data }
+          readinessProbe:
+            tcpSocket: { port: nzbget }
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: nzbget }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { memory: 1Gi }
+      volumes:
+        - name: setup
+          configMap: { name: media-setup }
+        - name: gluetun
+          emptyDir: {}                      # server list and forwarded-port file
+        - name: qbittorrent-config
+          persistentVolumeClaim: { claimName: qbittorrent-config }
+        - name: nzbget-config
+          persistentVolumeClaim: { claimName: nzbget-config }
+        - name: media
+          persistentVolumeClaim: { claimName: media-library }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: downloads
+  namespace: media
+spec:
+  selector:
+    app.kubernetes.io/name: downloads
+  ports:
+    - name: qbittorrent
+      port: 8080
+      targetPort: qbittorrent
+    - name: nzbget
+      port: 6789
+      targetPort: nzbget
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: downloads
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [qb.lab.alamst.me, nzbget.lab.alamst.me]
+  rules:
+    - host: qb.lab.alamst.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: downloads
+                port:
+                  name: qbittorrent
+    - host: nzbget.lab.alamst.me
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: downloads
+                port:
+                  name: nzbget

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sure-config
+  namespace: finance
+data:
+  SELF_HOSTED: "true"
+  RAILS_ASSUME_SSL: "false"            # TLS ends at Traefik; Rails should issue secure cookies
+  RAILS_FORCE_SSL: "false"
+  APP_DOMAIN: sure.lab.alamst.me
+  DB_HOST: sure-postgres
+  DB_PORT: "5432"
+  POSTGRES_USER: sure
+  POSTGRES_DB: sure_production
+  REDIS_URL: redis://sure-redis:6379/1
