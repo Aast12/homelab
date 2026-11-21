@@ -85,7 +85,7 @@ k8s/lab.sh apply --strict     # everything, or stop if anything is not configure
 | `k8s/apps/jellyfin` | Jellyfin | `media` | no |
 | `k8s/apps/audiobookshelf` | Audiobookshelf | `media` | no |
 | `k8s/apps/arr` | Jellyseerr, Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, FlareSolverr, qBittorrent and nzbget behind a VPN, and the Job that wires them | `media` | one login, API keys, Proton VPN key |
-| `k8s/apps/sure` | Sure, with nightly database dumps | `finance` | app secrets |
+| `k8s/apps/sure` | Sure, with nightly database dumps and a statement API (`patches/`) | `finance` | app secrets |
 | `k8s/apps/nubank-import` | Imports Nubank statement PDFs into Sure | `finance` | Sure API key, upload token |
 | `k8s/apps/syncfy-bridge` | Feeds the American Express card from Syncfy to Sure | `finance` | Syncfy API key and user, bridge token |
 
@@ -111,6 +111,13 @@ NetBird on when you're away from home. Without the Shortcut, upload the PDF at
 The debit account in Sure holds the whole statement balance (account, cajitas and secured-credit
 cajita); moves between the account and the cajitas are left out. Credit card MSI purchases
 appear as one charge per instalment, and the card's balance includes what's still pending.
+
+Each PDF is also filed in the account's **Statements** tab in Sure, named with its account and
+period. Sure reads what it can from it first; the import then fills in or corrects the period and
+balances from the statement's checked totals, and its result lists what Sure read and what was
+corrected. The credit card's opening balance stays blank: the statement's "Adeudo del periodo
+anterior" leaves out pending MSI. Filing needs the statement API added to Sure in
+`k8s/apps/sure/patches`, which v0.7.6 lacks.
 
 ### The media apps
 

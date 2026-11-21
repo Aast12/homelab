@@ -70,6 +70,9 @@ class Statement:
     balance: Decimal         # debit: money held; credit: amount owed
     transactions: list[Txn]
     checks: dict[str, str]
+    # debit only: the credit statement's "Adeudo del periodo anterior" leaves out
+    # pending MSI, so it is not the opening of the balance above
+    opening: Decimal | None = None
 
 
 def money(s: str) -> Decimal:
@@ -209,7 +212,7 @@ def parse_debit(text: str) -> Statement:
         "movements out = Gastos": str(-spending),
         "opening + in - out - fees + interest = closing": str(closing),
         "cajita moves skipped": str(skipped_cajita),
-    })
+    }, opening=opening)
 
 
 # ------------------------------------------------------------------ credit
@@ -328,9 +331,56 @@ class Sure:
                          ctype=f"multipart/form-data; boundary={boundary}")
 
 
-def import_statement(st: Statement, pdf: bytes, filename: str, sure: Sure,
-                     names: dict[str, str]) -> dict:
+# Statement fields Sure reads from the PDF, and how to compare them with ours.
+STATEMENT_FIELDS = ("period_start_on", "period_end_on", "opening_balance", "closing_balance")
+
+
+def statement_fields(st: Statement) -> dict[str, str]:
+    ours = {"period_start_on": st.period_start.isoformat(), "period_end_on": st.period_end.isoformat(),
+            "closing_balance": str(st.balance)}
+    if st.opening is not None:
+        ours["opening_balance"] = str(st.opening)
+    return ours
+
+
+def same(field: str, a: str | None, b: str | None) -> bool:
+    if a is None or b is None:
+        return a == b
+    return Decimal(a) == Decimal(b) if field.endswith("balance") else a == b
+
+
+def file_statement(st: Statement, pdf: bytes, account: str, account_name: str, sure: Sure) -> dict:
+    """Send the PDF to Sure's statement API and keep what Sure read from it."""
+    name = f"{account_name} {st.period_start} a {st.period_end}.pdf"
+    try:
+        _, res = sure.upload_statement(account, name, pdf)
+    except SureError as e:
+        if e.status == 404:
+            return {"filed": "no (esta versión de Sure no tiene API de estados de cuenta)"}
+        return {"filed": f"no ({e})"}
+    data = res.get("data") or {}
+    return {"filed": "ya estaba" if (res.get("meta") or {}).get("duplicate") else "sí",
+            "id": data.get("id"), "read_from": data.get("read_from"),
+            "sure_read": {f: data.get(f) for f in STATEMENT_FIELDS}}
+
+
+def complete_statement(st: Statement, filed: dict, sure: Sure) -> dict:
+    """Correct, from our checked values, what Sure read wrong or left blank."""
+    if not filed.get("id"):
+        return filed
+    ours = statement_fields(st)
+    fixes = {f: v for f, v in ours.items() if not same(f, filed["sure_read"].get(f), v)}
+    if fixes:
+        sure.call("PATCH", f"/api/v1/account_statements/{filed['id']}",
+                  {"statement": {**fixes, "currency": "MXN"}})
+    return {**filed, "corrected": {f: [filed["sure_read"].get(f), v] for f, v in fixes.items()}}
+
+
+def import_statement(st: Statement, pdf: bytes, sure: Sure, names: dict[str, str]) -> dict:
     account = sure.account_id(names[st.kind])
+    # The statement goes to Sure first, so what Sure reads on its own is on record
+    # before anything of ours is written.
+    filed = file_statement(st, pdf, account, names[st.kind], sure)
     created = existing = 0
     for t in st.transactions:
         status, _ = sure.call("POST", "/api/v1/transactions", {"transaction": {
@@ -351,22 +401,13 @@ def import_statement(st: Statement, pdf: bytes, filename: str, sure: Sure,
     sure.call("POST", "/api/v1/valuations", {"upsert": True, "valuation": {
         "account_id": account, "date": st.period_end.isoformat(), "amount": str(st.balance),
         "notes": f"Saldo según estado de cuenta Nu {st.period_start} a {st.period_end}"}})
-    # The statement vault API exists only in newer Sure (not v0.7.6); without
-    # it the transactions and balance are still in, so report and carry on.
-    try:
-        _, res = sure.upload_statement(account, filename, pdf)
-        filed = "already in Sure" if (res.get("meta") or {}).get("duplicate") else "yes"
-    except SureError as e:
-        if e.status != 404:
-            raise
-        filed = "no (this Sure version has no statement vault)"
     return {
         "account": names[st.kind],
         "period": f"{st.period_start} to {st.period_end}",
         "transactions_created": created,
         "transactions_already_there": existing,
         "balance": str(st.balance),
-        "statement_filed": filed,
+        "statement": complete_statement(st, filed, sure),
     }
 
 
@@ -450,7 +491,7 @@ class Handler(BaseHTTPRequestHandler):
             st = parse(pdf_text(pdf))
             if "dry_run" in self.path:
                 return self.finish_upload(pdf, filename, st, 200, render(st, None))
-            result = import_statement(st, pdf, filename, Sure(os.environ["SURE_URL"], os.environ["SURE_API_KEY"]), {
+            result = import_statement(st, pdf, Sure(os.environ["SURE_URL"], os.environ["SURE_API_KEY"]), {
                 "debit": os.environ.get("SURE_DEBIT_ACCOUNT", "Nu Débito"),
                 "credit": os.environ.get("SURE_CREDIT_ACCOUNT", "Nu Crédito")})
             self.finish_upload(pdf, filename, st, 200, render(st, result))
@@ -509,14 +550,25 @@ def keep_upload(data: bytes, filename: str, st: "Statement | None", status: int,
     return sha
 
 
+LABELS = {"period_start_on": "inicio", "period_end_on": "fin",
+          "opening_balance": "saldo inicial", "closing_balance": "saldo final"}
+
+
 def render(st: Statement, result: dict | None) -> str:
     kind = "Cuenta Nu (débito)" if st.kind == "debit" else f"Tarjeta de crédito ••{st.account_ref}"
     lines = [f"{kind}, {st.period_start} a {st.period_end}",
              f"Movimientos: {len(st.transactions)}", f"Saldo: ${st.balance:,}"]
     if result:
+        s = result["statement"]
         lines += [f"Nuevos en Sure: {result['transactions_created']}",
                   f"Ya estaban: {result['transactions_already_there']}",
-                  f"Estado de cuenta archivado: {result['statement_filed']}"]
+                  f"Estado de cuenta en Sure: {s['filed']}"]
+        if s.get("id"):
+            read = {f: v for f, v in s["sure_read"].items() if v is not None}
+            lines.append(f"Sure leyó ({', '.join(s.get('read_from') or []) or 'nada'}): "
+                         + (", ".join(f"{LABELS[f]} {v}" for f, v in read.items()) or "nada"))
+            lines.append("Corregido con lo nuestro: " + (", ".join(
+                f"{LABELS[f]} {old or 'vacío'} → {new}" for f, (old, new) in s["corrected"].items()) or "nada"))
     else:
         lines.append("(prueba: no se escribió nada en Sure)")
     return "\n".join(lines) + "\n"
