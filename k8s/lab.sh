@@ -99,6 +99,11 @@ subst_vars() { grep -oE '^[A-Z0-9_]+=' "$here/cluster.env" | grep -v K3S_TOKEN |
 
 apply_dir() {
   local dir=$1 out tries=0
+  # A Job can't be changed in place, so Jobs labelled run-on-apply are deleted
+  # and created again: they run on every apply, and a finished one stays (with
+  # its log) until the next.
+  kubectl kustomize "$dir" | envsubst "$(subst_vars)" \
+    | kubectl delete -f - -l lab.alamst.me/run-on-apply=true --ignore-not-found --wait >/dev/null 2>&1 || true
   # cert-manager installs its own resource types; the first apply can race it
   until out=$(kubectl kustomize "$dir" | envsubst "$(subst_vars)" | kubectl apply -f - 2>&1); do
     if grep -q 'ensure CRDs are installed' <<<"$out" && ((tries++ < 30)); then

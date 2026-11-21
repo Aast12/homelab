@@ -1,15 +1,18 @@
 # Sets every media app's login and wires the apps together (setup/setup.py).
-# `lab.sh apply` runs it; it waits for the apps, changes only what differs,
-# and is deleted a minute after it finishes, so the next apply runs it again.
+# `lab.sh apply` runs it on every apply (it deletes the previous one first);
+# it waits for the apps and changes only what differs. Its log stays for a day:
+#   kubectl -n media logs job/media-setup
 # A change to secrets.env or to the script renames the Secret or ConfigMap
 # it uses, so that apply also restarts the apps with the new values.
 apiVersion: batch/v1
 kind: Job
 metadata:
+  labels:
+    lab.alamst.me/run-on-apply: "true"
   name: media-setup
   namespace: media
 spec:
-  ttlSecondsAfterFinished: 60
+  ttlSecondsAfterFinished: 86400
   backoffLimit: 4
   activeDeadlineSeconds: 3600
   template:
