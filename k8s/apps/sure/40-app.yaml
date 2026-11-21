@@ -33,7 +33,7 @@ spec:
           command: [sh, -c, 'until pg_isready -h sure-postgres -p 5432; do sleep 2; done']
       containers:
         - name: web
-          image: ghcr.io/we-promise/sure:stable
+          image: ghcr.io/aast12/homelab-sure:0.7.6-hotfix.1-1   # Sure plus the statement API, from images/sure
           envFrom:
             - configMapRef: { name: sure-config }
             - secretRef:    { name: sure-secrets }
@@ -42,11 +42,6 @@ spec:
               containerPort: 3000
           volumeMounts:
             - { name: storage, mountPath: /rails/storage }
-            # the statement API (patches/); remove both lines when Sure ships one with update
-            - { name: patches, mountPath: /rails/app/controllers/api/v1/homelab_statements_controller.rb,
-                subPath: homelab_statements_controller.rb, readOnly: true }
-            - { name: patches, mountPath: /rails/config/initializers/homelab_statements_routes.rb,
-                subPath: homelab_statements_routes.rb, readOnly: true }
           startupProbe:
             tcpSocket: { port: http }
             periodSeconds: 5
@@ -60,8 +55,6 @@ spec:
       volumes:
         - name: storage
           persistentVolumeClaim: { claimName: sure-storage }
-        - name: patches
-          configMap: { name: sure-patches }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -82,7 +75,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/we-promise/sure:stable
+          image: ghcr.io/aast12/homelab-sure:0.7.6-hotfix.1-1   # Sure plus the statement API, from images/sure
           args: [bundle, exec, sidekiq]
           envFrom:
             - configMapRef: { name: sure-config }

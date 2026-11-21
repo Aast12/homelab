@@ -1,0 +1,56 @@
+# Builds images/sure into ghcr.io/<owner>/homelab-sure:<images/sure/TAG>.
+# Branches only build it; main also pushes it. A tag is never overwritten: change
+# anything in images/sure and bump TAG (and the image in k8s/apps/sure/40-app.yaml).
+name: Sure image
+
+on:
+  push:
+    paths:
+      - images/sure/**
+      - .github/workflows/sure-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - name: Read the tag
+        id: tag
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/homelab-sure"
+          ref="$image:$(tr -d '[:space:]' < images/sure/TAG)"
+          if ! grep -q "image: $ref " k8s/apps/sure/40-app.yaml; then
+            echo "::error::k8s/apps/sure/40-app.yaml doesn't run $ref; set it there too"
+            exit 1
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse to overwrite a published tag
+        if: github.ref == 'refs/heads/main'
+        run: |
+          if docker buildx imagetools inspect "${{ steps.tag.outputs.ref }}" > /dev/null 2>&1; then
+            echo "::error::${{ steps.tag.outputs.ref }} is already published; bump images/sure/TAG"
+            exit 1
+          fi
+
+      - uses: docker/setup-buildx-action@v3.10.0
+
+      - uses: docker/build-push-action@v6.15.0
+        with:
+          context: images/sure
+          platforms: linux/amd64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.tag.outputs.ref }}
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}

@@ -85,7 +85,7 @@ k8s/lab.sh apply --strict     # everything, or stop if anything is not configure
 | `k8s/apps/jellyfin` | Jellyfin | `media` | no |
 | `k8s/apps/audiobookshelf` | Audiobookshelf | `media` | no |
 | `k8s/apps/arr` | Jellyseerr, Sonarr, Radarr, Lidarr, Bazarr, Prowlarr, FlareSolverr, qBittorrent and nzbget behind a VPN, and the Job that wires them | `media` | one login, API keys, Proton VPN key |
-| `k8s/apps/sure` | Sure, with nightly database dumps and a statement API (`patches/`) | `finance` | app secrets |
+| `k8s/apps/sure` | Sure ([the homelab image](#the-sure-image)), with nightly database dumps | `finance` | app secrets |
 | `k8s/apps/nubank-import` | Imports Nubank statement PDFs into Sure | `finance` | Sure API key, upload token |
 | `k8s/apps/syncfy-bridge` | Feeds the American Express card from Syncfy to Sure | `finance` | Syncfy API key and user, bridge token |
 
@@ -116,8 +116,8 @@ Each PDF is also filed in the account's **Statements** tab in Sure, named with i
 period. Sure reads what it can from it first; the import then fills in or corrects the period and
 balances from the statement's checked totals, and its result lists what Sure read and what was
 corrected. The credit card's opening balance stays blank: the statement's "Adeudo del periodo
-anterior" leaves out pending MSI. Filing needs the statement API added to Sure in
-`k8s/apps/sure/patches`, which v0.7.6 lacks.
+anterior" leaves out pending MSI. Filing uses the statement API in
+[the homelab's Sure image](#the-sure-image).
 
 ### The media apps
 
@@ -164,6 +164,22 @@ in this repo yet ([#16](https://github.com/Aast12/homelab/issues/16)).
 If Syncfy can't log in, Sure's sync summary shows why and the card keeps its last data. To see
 what Sure receives, without syncing:
 `kubectl -n finance exec deploy/syncfy-bridge -- python /app/syncfy_bridge.py check`.
+
+## The Sure image
+
+The cluster runs `ghcr.io/aast12/homelab-sure`, built from `images/sure`: the Sure release pinned
+in its `Dockerfile`, plus an API to upload, read and correct account statements, which Sure v0.7.6
+only offers on its web page. The Nubank import files statements through it.
+
+GitHub Actions builds it on every push that changes `images/sure`, and publishes it from `main`
+under the tag in `images/sure/TAG`. A published tag is never overwritten.
+
+To move to a newer Sure:
+
+1. Change `FROM` in `images/sure/Dockerfile`, bump `images/sure/TAG`, and set the same tag in
+   `k8s/apps/sure/40-app.yaml` (both deployments).
+2. Merge, and wait for the **Sure image** workflow on `main` to finish.
+3. Run `k8s/lab.sh apply sure`.
 
 ## Where the data lives
 

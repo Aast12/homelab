@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Statement API for Sure versions that only have the web upload (v0.7.6).
-# Mounted into the Sure pods from k8s/apps/sure; see the README, "Sure patches".
+# Built into the homelab Sure image (images/sure/Dockerfile).
 #
 #   POST  /api/v1/account_statements      file + account_id: stored and read by
 #                                         Sure's own upload code, as the web form does
