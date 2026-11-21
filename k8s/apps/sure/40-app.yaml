@@ -33,7 +33,7 @@ spec:
           command: [sh, -c, 'until pg_isready -h sure-postgres -p 5432; do sleep 2; done']
       containers:
         - name: web
-          image: ghcr.io/we-promise/sure:stable
+          image: ghcr.io/aast12/homelab-sure:0.7.6-hotfix.1-1   # Sure plus the statement API, from images/sure
           envFrom:
             - configMapRef: { name: sure-config }
             - secretRef:    { name: sure-secrets }
@@ -75,7 +75,7 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/we-promise/sure:stable
+          image: ghcr.io/aast12/homelab-sure:0.7.6-hotfix.1-1   # Sure plus the statement API, from images/sure
           args: [bundle, exec, sidekiq]
           envFrom:
             - configMapRef: { name: sure-config }

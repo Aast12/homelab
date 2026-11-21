@@ -1,0 +1,70 @@
+# A SimpleFIN server for Sure, backed by Syncfy: Sure's SimpleFIN connection
+# reads the accounts Syncfy reaches (American Express Mexico). Sure reaches it
+# inside the cluster only; there is no Ingress. The code is app/syncfy_bridge.py.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syncfy-bridge
+  namespace: finance
+  labels:
+    app.kubernetes.io/name: syncfy-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: syncfy-bridge
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: syncfy-bridge
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: syncfy-bridge
+          image: python:3.13.17-slim
+          command: [python, /app/syncfy_bridge.py, serve]
+          env:
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            # the address Sure uses; it goes into the setup token
+            - { name: PUBLIC_URL, value: http://syncfy-bridge.finance.svc.cluster.local }
+            # Syncfy syncs at most this often, however often Sure asks
+            - { name: MIN_SYNC_HOURS, value: "24" }
+          envFrom:
+            - secretRef: { name: syncfy-bridge }    # see secrets.env.example
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits:   { memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: app, mountPath: /app, readOnly: true }
+      volumes:
+        - name: app
+          configMap: { name: syncfy-bridge-app }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: syncfy-bridge
+  namespace: finance
+spec:
+  selector:
+    app.kubernetes.io/name: syncfy-bridge
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

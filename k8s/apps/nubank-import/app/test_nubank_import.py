@@ -159,6 +159,76 @@ class KeepUploads(unittest.TestCase):
             self.assertEqual(rec["statement"]["period"], ["2026-09-01", "2026-09-30"])
 
 
+class FakeSure:
+    """Records every call; answers the statement upload with `read` (None: no statement API)."""
+
+    def __init__(self, read=None, duplicate=False, statement_status=None):
+        self.calls, self.read, self.duplicate, self.statement_status = [], read, duplicate, statement_status
+
+    def account_id(self, name):
+        return "acct-" + name
+
+    def upload_statement(self, account, filename, pdf):
+        self.calls.append(("POST statement", filename))
+        if self.read is None or self.statement_status:
+            raise ni.SureError(self.statement_status or 404, "statement API")
+        return 201, {"data": {"id": "st1", "read_from": ["pdf_text"], **self.read},
+                     "meta": {"duplicate": self.duplicate}}
+
+    def call(self, method, path, body=None, **_):
+        self.calls.append((method, path, body))
+        return 201, {"data": {}}
+
+
+class FileStatement(unittest.TestCase):
+    names = {"debit": "Nu Débito", "credit": "Nu Crédito"}
+
+    def run_import(self, sure):
+        return ni.import_statement(ni.parse(DEBIT), b"%PDF", sure, self.names)
+
+    def test_sure_reads_first_and_we_correct_what_it_got_wrong_or_left_blank(self):
+        sure = FakeSure(read={"period_start_on": None, "period_end_on": None,
+                              "opening_balance": "1000.0", "closing_balance": "1209.7"})
+        result = self.run_import(sure)
+        self.assertEqual(sure.calls[0], ("POST statement", "Nu Débito 2026-09-01 a 2026-09-30.pdf"))
+        self.assertEqual([c[0] for c in sure.calls[1:-1]], ["POST"] * (len(sure.calls) - 2))   # transactions, balance
+        method, path, body = sure.calls[-1]
+        self.assertEqual((method, path), ("PATCH", "/api/v1/account_statements/st1"))
+        self.assertEqual(body, {"statement": {"period_start_on": "2026-09-01", "period_end_on": "2026-09-30",
+                                              "closing_balance": "1209.75", "currency": "MXN"}})
+        self.assertEqual(result["statement"]["corrected"]["closing_balance"], ["1209.7", "1209.75"])
+        self.assertNotIn("opening_balance", result["statement"]["corrected"])   # 1000.0 == 1000.00
+        text = ni.render(ni.parse(DEBIT), result)
+        self.assertIn("Sure leyó (pdf_text): saldo inicial 1000.0, saldo final 1209.7", text)
+        self.assertIn("inicio vacío → 2026-09-01", text)
+
+    def test_nothing_to_correct_writes_nothing_more(self):
+        sure = FakeSure(read={"period_start_on": "2026-09-01", "period_end_on": "2026-09-30",
+                              "opening_balance": "1000.00", "closing_balance": "1209.75"}, duplicate=True)
+        result = self.run_import(sure)
+        self.assertNotIn("PATCH", [c[0] for c in sure.calls])
+        self.assertEqual(result["statement"]["filed"], "ya estaba")
+        self.assertIn("Corregido con lo nuestro: nada", ni.render(ni.parse(DEBIT), result))
+
+    def test_a_sure_without_the_statement_api_still_gets_the_transactions(self):
+        sure = FakeSure(read=None)
+        result = self.run_import(sure)
+        self.assertEqual(result["statement"], {"filed": "no (esta versión de Sure no tiene API de estados de cuenta)"})
+        self.assertEqual(result["transactions_created"], len(ni.parse(DEBIT).transactions))
+        self.assertNotIn("PATCH", [c[0] for c in sure.calls])
+
+    def test_a_statement_api_error_does_not_stop_the_transactions(self):
+        sure = FakeSure(read={}, statement_status=500)
+        result = self.run_import(sure)
+        self.assertTrue(result["statement"]["filed"].startswith("no ("))
+        self.assertEqual(result["transactions_created"], len(ni.parse(DEBIT).transactions))
+
+    def test_credit_card_opening_is_left_to_sure(self):
+        st = ni.parse(CREDIT)
+        self.assertIsNone(st.opening)
+        self.assertNotIn("opening_balance", ni.statement_fields(st))
+
+
 class Upload(unittest.TestCase):
     def test_raw_pdf_and_multipart(self):
         pdf = b"%PDF-1.7 test"
