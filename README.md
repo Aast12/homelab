@@ -4,8 +4,9 @@ Two kinds of machine serve everything under one domain (`lab.alamst.me`):
 
 - **A Raspberry Pi** (`core/`, Docker Compose): DNS (Blocky), the front proxy (Traefik), the
   dashboard (Glance) and Home Assistant.
-- **A k3s cluster** (`k8s/`): every other app. Some nodes are **media nodes**: they hold the media
-  library at `/data`, and only they run the apps that need it.
+- **A k3s cluster** (`k8s/`): the other apps, except Nod's host-native Docker stack (`host/nod/`)
+  on a cluster node. Some nodes are **media nodes**: they hold the media library at `/data`,
+  and only they run the apps that need it.
 
 Blocky answers the domain and every name under it with the Pi's address. The Pi's Traefik serves
 its own apps and forwards every other name to the cluster's floating address, which kube-vip
@@ -88,6 +89,75 @@ k8s/lab.sh apply --strict     # everything, or stop if anything is not configure
 | `k8s/apps/sure` | Sure ([the homelab image](#the-sure-image)), with nightly database dumps | `finance` | app secrets |
 | `k8s/apps/nubank-import` | Imports Nubank statement PDFs into Sure | `finance` | Sure API key, upload token |
 | `k8s/apps/syncfy-bridge` | Feeds the American Express card from Syncfy to Sure | `finance` | Syncfy API key and user, bridge token |
+| `k8s/apps/nod` | Private routing to host-native Nod; installation uses `host/nod/nod.sh` | `nod` | no |
+
+## Nod on a cluster node
+
+Nod uses the pinned, unmodified upstream host-native Docker stack, not Kubernetes workloads or
+a new VM. Keep upstream resource limits; choose a node with enough capacity and move Nod when
+more capacity is needed.
+
+The private address is `https://<hostname>`, using the DNS hostname supplied in `NOD_HOSTNAME`
+and existing ingress TLS. Clients need DNS resolution and network access to that ingress.
+Only `host/nod/nod.sh` manages the rendered Ingress and active-node EndpointSlice.
+`k8s/lab.sh apply` can reapply Nod's namespace and selectorless Service, but cannot install Nod,
+render its Ingress or reset its placement. No DNS or TLS-provider changes are needed for a move.
+Move and rollback require `NOD_HOSTNAME` to match the deployed Ingress before either host is
+changed; keep the stable hostname when relocating or recovering an installation.
+
+After deployment, read `NOD_AUTH_TOKEN` locally from `/opt/nod/current/.env` on the node reported
+by `status` (root access required), enter it in the web access form, and complete provider
+onboarding. Deployment does not connect an AI provider or copy credentials from other tools.
+
+Run from this checkout with local Bash, SSH, Python 3 and tar, trusted SSH host keys, and
+noninteractive sudo. Keep personal settings in a private local file **outside Git**, export the
+following variables there, and source that file before running commands:
+
+| Variable | Required value |
+| --- | --- |
+| `NOD_SSH_USER` | SSH account used for the control host and target nodes |
+| `NOD_SSH_KEY` | Local path to that account's SSH private key, not the key contents |
+| `NOD_CONTROL_HOST` | SSH hostname of the control host with `sudo -n k3s kubectl` available |
+| `NOD_HOSTNAME` | DNS hostname for Nod, without a scheme, port or path; the controller builds `https://<hostname>` |
+
+There are no defaults for these private values. Optional `NOD_DEFAULT_NODE` supplies the initial
+deployment target; an explicit `deploy <node>` overrides it. Without either target, deployment
+fails before SSH. Other commands do not require `NOD_DEFAULT_NODE`, and `--help` requires no
+configuration. The controller reads exported environment variables; it does not load a config file.
+Do not put raw credentials in the settings file.
+
+A target must be a registered **Ready** cluster node, reachable at `<node>.local`, with a private
+InternalIP, compatible Debian 13 AMD64 Docker packages, and enough memory and disk (at least
+12 GiB free at both `/opt` and `/var/lib` for staging, plus backup space). Unmanaged existing
+Docker installations are rejected. Initial artifact retrieval uses authenticated local `gh`;
+credentials and SSH keys are never copied to nodes. The verified bundle is retained under
+`/opt/nod` for later moves even after the upstream Actions artifact expires.
+
+```bash
+host/nod/nod.sh deploy <node>    # initial install; omit node only with NOD_DEFAULT_NODE set
+host/nod/nod.sh status           # routed node/IP, pending operation and host health
+host/nod/nod.sh backup           # retain a private snapshot on the active host
+host/nod/nod.sh move <node>      # controlled downtime; node must already be Ready
+host/nod/nod.sh rollback         # recover an interrupted move, not a general undo
+```
+
+Standalone `backup` pauses and resumes the previously running assistant through the upstream
+backup script; snapshots contain private keys and application data and must stay private.
+
+A move prepares the target first, then stops the source server, browser and workspace before
+backing up. It transfers the snapshot into a fresh same-revision installation, restores keys
+and data, and switches routing only after target health checks. This is **not zero-downtime
+failover**. The source stays stopped; its old volumes and private backups under
+`/var/lib/nod/backups` are retained. Mutations are serialized with a cluster operation marker.
+An interrupted move leaves that marker for recovery: rollback must confirm the target is
+stopped before restarting and routing to the preserved source. An unreachable old host is not
+permission to start a second writer; fencing is required. To relocate an existing installation,
+use `move`, not `deploy` on another node.
+Failures outside a move also retain `nod/nod-operation`; inspect the failure and host state
+before explicitly removing that marker. `rollback` does not recover deploy or backup failures.
+
+Cross-node transfer/routing cutover and sustained load have not been verified. This privacy
+revision has not been deployed.
 
 ## Import Nubank statements
 

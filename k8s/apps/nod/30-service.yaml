@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nod
+  namespace: nod
+spec:
+  # host/nod/nod.sh owns the nod-host EndpointSlice; no pod selector or fixed node.
+  ports:
+    - name: http
+      port: 4310
+      targetPort: 4310
+      protocol: TCP
